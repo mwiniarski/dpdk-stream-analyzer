@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#include "common.h"
+#include "common/common.h"
 
 // === GLOBALS
 #define MBUF_COUNT 8192
@@ -11,10 +11,10 @@
 #define MBUF_POOL_NAME "MBUF_POOL"
 
 #define ETH_RING_SIZE 512
-#define BURST_SIZE 32
+#define RING_SIZE 128
 
-#define SEND_RING_NAME "RING_1"
-#define SEND_RING_SIZE 128
+#define TX_RING_NAME RING_NAME_1
+#define RX_RING_NAME RING_NAME_2
 
 // Structure stored in memory shared between processes
 PortInfo *portInfo;
@@ -22,9 +22,9 @@ PortInfo *portInfo;
 // Static memory to use by all aplications to pass packets
 rte_mempool *mbufPool;
 
-// First application ring
-rte_ring *sendRing;
-
+// First application rings
+rte_ring *txRing;
+rte_ring *rxRing;
 // ===
 
 using namespace std;
@@ -94,8 +94,12 @@ void initEth()
     if (!memZone)
         rte_exit(EXIT_FAILURE, "ERROR: Can't reserve memory zone for port info\n");
 
-    memset(memZone->addr, 0, sizeof(PortInfo));
     portInfo = (PortInfo*) memZone->addr;
+    memset(portInfo, 0, sizeof(PortInfo));
+
+    portInfo->portCount = portCount;
+    portInfo->rxID = 0;
+    portInfo->txID = 1;
 
     // Init mbuf pool - static memory for buffers to use by all apps
     mbufPool = rte_pktmbuf_pool_create(MBUF_POOL_NAME, 
@@ -118,42 +122,73 @@ void initEth()
 
 void initRings()
 {
-    sendRing = rte_ring_create(SEND_RING_NAME, SEND_RING_SIZE, rte_socket_id(), 0);
+    // TX ring
+    txRing = rte_ring_create(TX_RING_NAME, RING_SIZE, rte_socket_id(), 0);
 
-    if (!sendRing)
-        rte_exit(EXIT_FAILURE, "ERROR: Problem with creating send ring\n"); 
+    if (!txRing)
+        rte_exit(EXIT_FAILURE, "ERROR: Problem with creating send ring\n");
 
-    cout << ">>> Ring " << SEND_RING_NAME << " [" 
-         << SEND_RING_SIZE << "] created" << endl;
+    cout << ">>> Ring " << TX_RING_NAME << " ["
+         << RING_SIZE << "] created" << endl;
+
+    // RX ring
+    rxRing = rte_ring_create(RX_RING_NAME, RING_SIZE, rte_socket_id(), 0);
+
+    if (!rxRing)
+        rte_exit(EXIT_FAILURE, "ERROR: Problem with creating send ring\n");
+
+    cout << ">>> Ring " << RX_RING_NAME << " ["
+         << RING_SIZE << "] created" << endl;
 }
 
-void startForwarding()
+void forwardPackets()
 {
-    rte_mbuf *bufs[BURST_SIZE];
+    rte_mbuf *bufs[MBUF_SIZE];
 
-    for (;;)
+    // Get packets from eth
+    int rxCount = rte_eth_rx_burst(portInfo->rxID, 0, bufs, MBUF_SIZE);
+
+    if (rxCount == 0)
+        return;
+
+    // Send to ring
+    if(rte_ring_sp_enqueue_bulk(txRing, (void**) bufs, rxCount, NULL) == 0)
     {
-        // Get packets from eth
-        const uint16_t rx_count = rte_eth_rx_burst(0, 0, bufs, BURST_SIZE);
+        // Failed to send - packets are dropped
+        for (int i = 0; i < rxCount; i++)
+            rte_pktmbuf_free(bufs[i]);
 
-        // Sleep 0.5 sec
-        usleep(500000);
-
-        if (rx_count == 0)
-            continue;
-
-        // Send to ring
-        if(rte_ring_sp_enqueue_bulk(sendRing, (void**) bufs, rx_count, NULL) == 0)
-        {
-            // Failed to send - packets are dropped
-            for (int i = 0; i < rx_count; i++)
-                rte_pktmbuf_free(bufs[i]);
-
-            cout << "> Some packets [" << rx_count << "] were dropped!" << endl;
-        }
-        else
-            cout << "> Packets sent: " << rx_count << endl;
+        cout << "> Some packets [" << rxCount << "] were dropped!" << endl;
     }
+    else
+        cout << "> Packets sent: " << rxCount << endl;
+}
+
+void backwardPackets()
+{
+    rte_mbuf *bufs[MBUF_SIZE];
+
+    // Get packets from ring
+    int rxCount = rte_ring_dequeue_burst(rxRing, (void**) bufs, MBUF_SIZE, NULL);
+
+    if (rxCount == 0)
+        return;
+
+    cout << "> Received [" << rxCount << "] packets from [" << RX_RING_NAME << "]";
+
+    // Send goddamn packts
+    int txCount = rte_eth_tx_burst(portInfo->rxID, 0, bufs, rxCount);
+
+    // Free mbufs that were not sent
+    if (txCount != rxCount)
+    {
+        for (int i = txCount; i < rxCount; i++)
+            rte_pktmbuf_free(bufs[i]);
+
+        cout << " and DROPPED [" << rxCount - txCount << "] of them!" << endl;
+    }
+    else
+        cout << " and sent all of them." << endl;
 }
 
 int main(int argc, char *argv[])
@@ -164,5 +199,12 @@ int main(int argc, char *argv[])
 
     initRings();
 
-    startForwarding();
+    for (;;)
+    {
+        // Sleep 0.5 sec
+        usleep(500000);
+
+        forwardPackets();
+        backwardPackets();
+    }
 }

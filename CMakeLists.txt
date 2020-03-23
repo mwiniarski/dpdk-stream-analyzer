@@ -10,7 +10,7 @@ file(GLOB common_src common/*)
 file(GLOB server_src server/*)
 file(GLOB app_src    app/*)
 
-include_directories($ENV{RTE_SDK}/$ENV{RTE_TARGET}/include common)
+include_directories($ENV{RTE_SDK}/$ENV{RTE_TARGET}/include .)
 link_directories($ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib)
 
 add_library(common STATIC ${common_src})
