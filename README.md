@@ -1,7 +1,7 @@
 # DPDK stream analyzer
 C++ framework for analyzing packets streams using DPDK
 
-## Installation Linux
+## Installation on Ubuntu
 
 Intstall DPDK and cmake  
 `sudo apt-get install dpdk-dev dpdk-doc libdpdk-dev dpdk cmake`
