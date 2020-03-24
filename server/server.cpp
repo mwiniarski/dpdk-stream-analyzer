@@ -5,20 +5,13 @@
 
 #include "common/common.h"
 
-// === GLOBALS
-#define MBUF_COUNT 8192
-#define MBUF_CACHE_SIZE 250
+// === Settings
 #define MBUF_POOL_NAME "MBUF_POOL"
+#define MBUF_CACHE_SIZE 250
+#define MBUF_COUNT 8192
 
 #define ETH_RING_SIZE 512
 #define RING_SIZE 128
-
-// Structure stored in memory shared between processes
-PortInfo *portInfo;
-
-// Static memory to use by all aplications to pass packets
-rte_mempool *mbufPool;
-
 // ===
 
 using namespace std;
@@ -76,36 +69,22 @@ void initEth()
     if (portCount < 2)
         rte_exit(EXIT_FAILURE, "ERROR: At least 2 ports needed, found %d\n", portCount);
 
-    cout << ">>> Found " << portCount << " ports available" << endl;
-
-    // Keep port info in system-wise accessible way
-    const rte_memzone *memZone = rte_memzone_reserve(
-                                        MZ_PORT_INFO,                                        sizeof(PortInfo),
-                                        rte_socket_id(),
-                                        0);
-
-    if (!memZone)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't reserve memory zone for port info\n");
-
-    portInfo = (PortInfo*) memZone->addr;
-    memset(portInfo, 0, sizeof(PortInfo));
-
-    portInfo->portCount = portCount;
-    portInfo->rxID = 0;
-    portInfo->txID = 1;
+    Logl(">>> Found " << portCount << " ports available");
 
     // Init mbuf pool - static memory for buffers to use by all apps
-    mbufPool = rte_pktmbuf_pool_create(MBUF_POOL_NAME,                                       MBUF_COUNT,
-                                       MBUF_CACHE_SIZE,
-                                       0,
-                                       RTE_MBUF_DEFAULT_BUF_SIZE,
-                                       rte_socket_id());
+    rte_mempool *mbufPool = rte_pktmbuf_pool_create(
+                                        MBUF_POOL_NAME,
+                                        MBUF_COUNT,
+                                        MBUF_CACHE_SIZE,
+                                        0,
+                                        RTE_MBUF_DEFAULT_BUF_SIZE,
+                                        rte_socket_id());
 
     if (!mbufPool)
             rte_exit(EXIT_FAILURE, "Error: Can't create mbuf pool\n");
 
-    cout << ">>> Mbuf pool " << MBUF_POOL_NAME <<
-            " [" << MBUF_COUNT << "] created" << endl;
+    Logl(">>> Mbuf pool " << MBUF_POOL_NAME <<
+            " [" << MBUF_COUNT << "] created");
 
     // Init eth ports
     for (int i = 0; i < 2; i++)
@@ -125,20 +104,50 @@ vector<rte_ring*> initRings(uint count)
         if (!rings[rings.size() - 1])
             rte_exit(EXIT_FAILURE, "ERROR: Can't create ring [%s]\n", ringName.c_str());
 
-        cout << ">>> Ring " << ringName << " ["
-            << RING_SIZE << "] created" << endl;
+        Logl(">>> Ring " << ringName << " ["
+            << RING_SIZE << "] created");
     }
 
     return rings;
+}
+
+GlobalInfo* initGlobalInfo(uint appCount)
+{
+    // Keep port info in system-wise accessible way
+    const rte_memzone *memZone = rte_memzone_reserve(
+                                        GLOBAL_INFO_NAME,
+                                        sizeof(GlobalInfo),
+                                        rte_socket_id(),
+                                        0);
+
+    if (!memZone)
+        rte_exit(EXIT_FAILURE, "ERROR: Can't reserve memory zone for port info\n");
+
+    GlobalInfo* gi = (GlobalInfo*) memZone->addr;
+    memset(gi, 0, sizeof(GlobalInfo));
+
+    gi->rxPort = 0;
+    gi->txPort = 1;
+    gi->appCount = appCount;
+
+    return gi;
 }
 
 int main(int argc, char *argv[])
 {
     initEAL(argc, &argv);
 
+    if (argc < 2)
+        rte_exit(EXIT_FAILURE, "Usage: ./server <app_count>\n");
+
+    // Take app count as program argument
+    GlobalInfo *globalInfo = initGlobalInfo(stoi(argv[1]));
+
+    // Initialize eth ports
     initEth();
 
-    vector<rte_ring*> rings = initRings(4);
+    // Initialize memory rings for all apps
+    vector<rte_ring*> rings = initRings(globalInfo->appCount);
 
     for (;;)
     {
@@ -146,9 +155,9 @@ int main(int argc, char *argv[])
         usleep(1000);
 
         // ETH --> RING
-        sendFromEthToRing(portInfo->rxID, rings[0]);
+        sendFromEthToRing(globalInfo->rxPort, rings[0]);
 
         // ETH <-- ETH
-        sendFromEthToEth(portInfo->txID, portInfo->rxID);
+        sendFromEthToEth(globalInfo->txPort, globalInfo->rxPort);
     }
 }

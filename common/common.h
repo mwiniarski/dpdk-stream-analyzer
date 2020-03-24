@@ -13,7 +13,7 @@
 #endif // LOG
 #define Logl(x) Log(x << std::endl)
 
-#define MZ_PORT_INFO "PORT_INFO"
+#define GLOBAL_INFO_NAME "GLOBAL_INFO"
 
 #define RING_NAME_PREFIX "RING_"
 
@@ -21,10 +21,14 @@
 
 #define MAX_PORT_COUNT 8
 
-struct PortInfo {
-    uint16_t portCount;
-    uint16_t rxID;
-    uint16_t txID;
+struct GlobalInfo {
+
+    // Ethernet ports
+    uint16_t rxPort;
+    uint16_t txPort;
+
+    // Number of apps in chain
+    uint16_t appCount;
 };
 
 

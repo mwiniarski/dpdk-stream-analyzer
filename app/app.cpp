@@ -8,55 +8,56 @@
 
 using namespace std;
 
-// === GLOBALS
-
-// Structure stored in memory shared between processes
-PortInfo *portInfo;
-
-// ===
-
-void initEth()
+GlobalInfo* getGlobalInfo()
 {
     // Retrieve port info shared by server
-    const rte_memzone *memzone = rte_memzone_lookup(MZ_PORT_INFO);
+    const rte_memzone *memzone = rte_memzone_lookup(GLOBAL_INFO_NAME);
 
     if (!memzone)
-        rte_exit(EXIT_FAILURE, "ERROR: Cannot get port info structure\n");
+        rte_exit(EXIT_FAILURE, "ERROR: Can't read '%s' memzone\n", GLOBAL_INFO_NAME);
 
-    portInfo = (PortInfo *) memzone->addr;
-
-    cout << ">>> TX eth port: " << portInfo->txID << endl;
+    return (GlobalInfo *) memzone->addr;
 }
 
-vector<rte_ring*> lookupRings(uint count)
+rte_ring* getRing(uint index)
 {
-    // Find all rings with given names
-    vector<rte_ring*> rings;
-    for (uint i = 0; i < count; i++)
-    {
-        string ringName = getRingName(i);
+    rte_ring* ring;
 
-        // Lookup ring
-        rings.push_back(rte_ring_lookup(ringName.c_str()));
+    string ringName = getRingName(index);
 
-        if (!rings[rings.size() - 1])
-            rte_exit(EXIT_FAILURE, "ERROR: Can't find ring [%s]\n", ringName.c_str());
-    }
+    // Lookup ring
+    ring = rte_ring_lookup(ringName.c_str());
 
-    return rings;
+    if (!ring)
+        rte_exit(EXIT_FAILURE, "ERROR: Can't find ring [%s]\n", ringName.c_str());
+
+    return ring;
 }
 
 int main(int argc, char* argv[])
 {
     initEAL(argc, &argv);
 
-    initEth();
+    if (argc < 2)
+        rte_exit(EXIT_FAILURE, "Usage: ./app <index>\n");
 
-    vector<rte_ring*> rings = lookupRings(2);
+    // Retrieve global info
+    GlobalInfo* globalInfo = getGlobalInfo();
 
-    if (argc > 1 && stoi(argv[1]) == 0)
+    // Retrieve rx ring used by app
+    int appIndex = stoi(argv[1]);
+    rte_ring* rxRing = getRing(appIndex);
+
+    // Set tx ring if this is not the last app in chain
+    rte_ring* txRing = NULL;
+    if (appIndex + 1 < globalInfo->appCount)
     {
-        cout << ">>> MIDDLE app mode" << endl;
+        txRing = getRing(appIndex + 1);
+    }
+
+    if (txRing)
+    {
+        Logl(">>> MIDDLE app mode");
 
         for (;;)
         {
@@ -64,12 +65,12 @@ int main(int argc, char* argv[])
             usleep(1000);
 
             // RING --> RING
-            sendFromRingToRing(rings[0], rings[1]);
+            sendFromRingToRing(rxRing, txRing);
         }
     }
     else
     {
-        cout << ">>> LAST-IN-CHAIN app mode" << endl;
+        Logl(">>> LAST-IN-CHAIN app mode");
 
         for (;;)
         {
@@ -77,7 +78,7 @@ int main(int argc, char* argv[])
             usleep(1000);
 
             // RING --> ETH
-            sendFromRingToEth(rings[1], portInfo->txID);
+            sendFromRingToEth(rxRing, globalInfo->txPort);
         }
     }
 
