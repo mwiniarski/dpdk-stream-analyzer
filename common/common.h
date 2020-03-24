@@ -6,6 +6,13 @@
 
 #include <string>
 
+#ifdef LOG
+    #define Log(x)  (std::cout << x)
+#else
+    #define Log(x) do{}while(0)
+#endif // LOG
+#define Logl(x) Log(x << std::endl)
+
 #define MZ_PORT_INFO "PORT_INFO"
 
 #define RING_NAME_PREFIX "RING_"
@@ -25,6 +32,7 @@ void initEAL(int &argc, char **argv[]);
 
 std::string getRingName(uint index);
 
+void sendFromEthToEth(int rxPort, int txPort);
 void sendFromEthToRing(int port, rte_ring *ring);
 void sendFromRingToEth(rte_ring *ring, int port);
 void sendFromRingToRing(rte_ring *rxRing, rte_ring *txRing);

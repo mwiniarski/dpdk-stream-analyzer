@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 
     initEth();
 
-    vector<rte_ring*> rings = lookupRings(4);
+    vector<rte_ring*> rings = lookupRings(2);
 
     if (argc > 1 && stoi(argv[1]) == 0)
     {
@@ -60,12 +60,11 @@ int main(int argc, char* argv[])
 
         for (;;)
         {
-            // Sleep 0.5 sec
-            usleep(500000);
+            // Sleep 1ms
+            usleep(1000);
 
-            // RING <--> RING
-            sendFromRingToRing(rings[0], rings[2]);
-            sendFromRingToRing(rings[3], rings[1]);
+            // RING --> RING
+            sendFromRingToRing(rings[0], rings[1]);
         }
     }
     else
@@ -74,12 +73,11 @@ int main(int argc, char* argv[])
 
         for (;;)
         {
-            // Sleep 0.5 sec
-            usleep(500000);
+            // Sleep 1ms
+            usleep(1000);
 
-            // RING <--> ETH
-            sendFromRingToEth(rings[2], portInfo->txID);
-            sendFromEthToRing(portInfo->txID, rings[3]);
+            // RING --> ETH
+            sendFromRingToEth(rings[1], portInfo->txID);
         }
     }
 

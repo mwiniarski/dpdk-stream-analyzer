@@ -80,8 +80,7 @@ void initEth()
 
     // Keep port info in system-wise accessible way
     const rte_memzone *memZone = rte_memzone_reserve(
-                                        MZ_PORT_INFO, 
-                                        sizeof(PortInfo),
+                                        MZ_PORT_INFO,                                        sizeof(PortInfo),
                                         rte_socket_id(),
                                         0);
 
@@ -96,17 +95,16 @@ void initEth()
     portInfo->txID = 1;
 
     // Init mbuf pool - static memory for buffers to use by all apps
-    mbufPool = rte_pktmbuf_pool_create(MBUF_POOL_NAME, 
-                                       MBUF_COUNT,
-                                       MBUF_CACHE_SIZE, 
-                                       0, 
-                                       RTE_MBUF_DEFAULT_BUF_SIZE, 
+    mbufPool = rte_pktmbuf_pool_create(MBUF_POOL_NAME,                                       MBUF_COUNT,
+                                       MBUF_CACHE_SIZE,
+                                       0,
+                                       RTE_MBUF_DEFAULT_BUF_SIZE,
                                        rte_socket_id());
 
     if (!mbufPool)
             rte_exit(EXIT_FAILURE, "Error: Can't create mbuf pool\n");
 
-    cout << ">>> Mbuf pool " << MBUF_POOL_NAME << 
+    cout << ">>> Mbuf pool " << MBUF_POOL_NAME <<
             " [" << MBUF_COUNT << "] created" << endl;
 
     // Init eth ports
@@ -144,10 +142,13 @@ int main(int argc, char *argv[])
 
     for (;;)
     {
-        // Sleep 0.5 sec
-        usleep(500000);
+        // Sleep 1ms
+        usleep(1000);
 
+        // ETH --> RING
         sendFromEthToRing(portInfo->rxID, rings[0]);
-        sendFromRingToEth(rings[1], portInfo->rxID);
+
+        // ETH <-- ETH
+        sendFromEthToEth(portInfo->txID, portInfo->rxID);
     }
 }
