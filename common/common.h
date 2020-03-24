@@ -4,10 +4,11 @@
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 
+#include <string>
+
 #define MZ_PORT_INFO "PORT_INFO"
 
-#define RING_NAME_1 "RING_1"
-#define RING_NAME_2 "RING_2"
+#define RING_NAME_PREFIX "RING_"
 
 #define MBUF_SIZE 32
 
@@ -21,5 +22,11 @@ struct PortInfo {
 
 
 void initEAL(int &argc, char **argv[]);
+
+std::string getRingName(uint index);
+
+void sendFromEthToRing(int port, rte_ring *ring);
+void sendFromRingToEth(rte_ring *ring, int port);
+void sendFromRingToRing(rte_ring *rxRing, rte_ring *txRing);
 
 #endif

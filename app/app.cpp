@@ -2,23 +2,17 @@
 #include <unistd.h>
 
 #include <rte_memzone.h>
+#include <vector>
 
 #include <common/common.h>
 
 using namespace std;
 
 // === GLOBALS
-#define RX_RING_NAME RING_NAME_1
-#define TX_RING_NAME RING_NAME_2
 
 // Structure stored in memory shared between processes
 PortInfo *portInfo;
 
-// Ring to receive from
-rte_ring  *rxRing;
-
-//Ring to send back to
-rte_ring *txRing;
 // ===
 
 void initEth()
@@ -34,69 +28,22 @@ void initEth()
     cout << ">>> TX eth port: " << portInfo->txID << endl;
 }
 
-void initRings()
+vector<rte_ring*> lookupRings(uint count)
 {
-    // RX ring
-    rxRing = rte_ring_lookup(RX_RING_NAME);
-
-    if (!rxRing)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't find RX ring '%s'", RX_RING_NAME);
-
-    // TX ring
-    txRing = rte_ring_lookup(TX_RING_NAME);
-
-    if (!txRing)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't find TX ring '%s'", TX_RING_NAME);
-}
-
-void forwardPackets()
-{
-    rte_mbuf *bufs[MBUF_SIZE];
-
-    // Get packets from ring
-    int rxCount = rte_ring_dequeue_burst(rxRing, (void**) bufs, MBUF_SIZE, NULL);
-
-    if (rxCount == 0)
-        return;
-
-    cout << "> Received [" << rxCount << "] packets from [" << RX_RING_NAME << "]";
-
-    // Send goddamn packts
-    int txCount = rte_eth_tx_burst(portInfo->txID, 0, bufs, rxCount);
-
-    // Free mbufs that were not sent
-    if (txCount != rxCount)
+    // Find all rings with given names
+    vector<rte_ring*> rings;
+    for (uint i = 0; i < count; i++)
     {
-        for (int i = txCount; i < rxCount; i++)
-            rte_pktmbuf_free(bufs[i]);
+        string ringName = getRingName(i);
 
-        cout << " and DROPPED [" << rxCount - txCount << "] of them!" << endl;
+        // Lookup ring
+        rings.push_back(rte_ring_lookup(ringName.c_str()));
+
+        if (!rings[rings.size() - 1])
+            rte_exit(EXIT_FAILURE, "ERROR: Can't find ring [%s]\n", ringName.c_str());
     }
-    else
-        cout << " and sent all of them." << endl;
-}
 
-void backwardPackets()
-{
-    rte_mbuf *bufs[MBUF_SIZE];
-
-    // Get packets from eth
-    int rxCount = rte_eth_rx_burst(portInfo->txID, 0, bufs, MBUF_SIZE);
-
-    if (rxCount == 0)
-        return;
-
-    // Send to ring
-    if(rte_ring_sp_enqueue_bulk(txRing, (void**) bufs, rxCount, NULL) == 0)
-    {
-        // Failed to send - packets are dropped
-        for (int i = 0; i < rxCount; i++)
-            rte_pktmbuf_free(bufs[i]);
-
-        cout << "> Some packets [" << rxCount << "] were dropped!" << endl;
-    }
-    else
-        cout << "> Packets sent: " << rxCount << endl;
+    return rings;
 }
 
 int main(int argc, char* argv[])
@@ -105,14 +52,35 @@ int main(int argc, char* argv[])
 
     initEth();
 
-    initRings();
+    vector<rte_ring*> rings = lookupRings(4);
 
-    for (;;)
+    if (argc > 1 && stoi(argv[1]) == 0)
     {
-        // Sleep 0.5 sec
-        usleep(500000);
+        cout << ">>> MIDDLE app mode" << endl;
 
-        forwardPackets();
-        backwardPackets();
+        for (;;)
+        {
+            // Sleep 0.5 sec
+            usleep(500000);
+
+            // RING <--> RING
+            sendFromRingToRing(rings[0], rings[2]);
+            sendFromRingToRing(rings[3], rings[1]);
+        }
     }
+    else
+    {
+        cout << ">>> LAST-IN-CHAIN app mode" << endl;
+
+        for (;;)
+        {
+            // Sleep 0.5 sec
+            usleep(500000);
+
+            // RING <--> ETH
+            sendFromRingToEth(rings[2], portInfo->txID);
+            sendFromEthToRing(portInfo->txID, rings[3]);
+        }
+    }
+
 }
