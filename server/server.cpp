@@ -3,65 +3,18 @@
 #include <iostream>
 #include <vector>
 
-#include "common/common.h"
+#include <shared.h>
+
+using namespace std;
 
 // === Settings
 #define MBUF_POOL_NAME "MBUF_POOL"
 #define MBUF_CACHE_SIZE 250
 #define MBUF_COUNT 8192
-
-#define ETH_RING_SIZE 512
-#define RING_SIZE 128
 // ===
 
-using namespace std;
 
-
-int portInit(uint16_t port, rte_mempool *mbufPool)
-{
-    int ret;
-    uint16_t nb_rxd = ETH_RING_SIZE;
-    uint16_t nb_txd = ETH_RING_SIZE;
-
-    // Configure eth device
-    rte_eth_conf portConf;
-    memset(&portConf, 0, sizeof(rte_eth_conf));
-    portConf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
-
-    // Set 1 rx and 1 tx queue for given port
-    ret = rte_eth_dev_configure(port, 1, 1, &portConf);
-    if (ret != 0)
-        return ret;
-
-    // Check if descriptor numbers are correct
-    ret = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
-    if (ret != 0)
-        return ret;
-
-    int sockId = rte_eth_dev_socket_id(port);
-
-    // Setup rx queue
-    ret = rte_eth_rx_queue_setup(port, 0, nb_rxd, sockId, NULL, mbufPool);
-    if (ret < 0)
-        return ret;
-
-    // Setup tx queue
-    ret = rte_eth_tx_queue_setup(port, 0, nb_txd, sockId, NULL);
-    if (ret < 0)
-        return ret;
-
-    // Start eth device
-    ret = rte_eth_dev_start(port);
-    if (ret < 0)
-        return ret;
-
-    // Enable rx in promiscuous mode for eth device.
-    rte_eth_promiscuous_enable(port);
-
-    return 0;
-}
-
-void initEth()
+rte_mempool* createMemPool()
 {
     // Check ports
     int portCount = rte_eth_dev_count();
@@ -86,51 +39,26 @@ void initEth()
     Logl(">>> Mbuf pool " << MBUF_POOL_NAME <<
             " [" << MBUF_COUNT << "] created");
 
-    // Init eth ports
-    for (int i = 0; i < 2; i++)
-        portInit(i, mbufPool);
+    return mbufPool;
 }
 
-vector<rte_ring*> initRings(uint count)
+vector<Ring> initRings(uint count)
 {
-    vector<rte_ring*> rings;
+    vector<Ring> rings;
     for (uint i = 0; i < count; i++)
     {
-        string ringName = getRingName(i);
+        rings.emplace_back(i, true);
 
-        // Create ring
-        rings.push_back(rte_ring_create(ringName.c_str(), RING_SIZE, rte_socket_id(), 0));
-
-        if (!rings[rings.size() - 1])
-            rte_exit(EXIT_FAILURE, "ERROR: Can't create ring [%s]\n", ringName.c_str());
-
-        Logl(">>> Ring " << ringName << " ["
-            << RING_SIZE << "] created");
+        Logl(">>> RING_" << i << " created");
     }
 
     return rings;
 }
 
-GlobalInfo* initGlobalInfo(uint appCount)
+void newPacketCallback(Packet &&p)
 {
-    // Keep port info in system-wise accessible way
-    const rte_memzone *memZone = rte_memzone_reserve(
-                                        GLOBAL_INFO_NAME,
-                                        sizeof(GlobalInfo),
-                                        rte_socket_id(),
-                                        0);
-
-    if (!memZone)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't reserve memory zone for port info\n");
-
-    GlobalInfo* gi = (GlobalInfo*) memZone->addr;
-    memset(gi, 0, sizeof(GlobalInfo));
-
-    gi->rxPort = 0;
-    gi->txPort = 1;
-    gi->appCount = appCount;
-
-    return gi;
+    static int c = 0;
+    Logl("Server " << c++);
 }
 
 int main(int argc, char *argv[])
@@ -141,13 +69,21 @@ int main(int argc, char *argv[])
         rte_exit(EXIT_FAILURE, "Usage: ./server <app_count>\n");
 
     // Take app count as program argument
-    GlobalInfo *globalInfo = initGlobalInfo(stoi(argv[1]));
+    GlobalInfo *info = GlobalInfo::init(stoi(argv[1]));
+
+    // Create memory pool
+    rte_mempool* mp = createMemPool();
 
     // Initialize eth ports
-    initEth();
+    auto rxPort = Port(0, mp);
+    auto txPort = Port(1, mp);
 
     // Initialize memory rings for all apps
-    vector<rte_ring*> rings = initRings(globalInfo->appCount);
+    vector<Ring> rings = initRings(info->appCount);
+
+    // Create senders
+    Sender ethToRing(rxPort, rings[0], newPacketCallback);
+    Sender ethToEth(txPort, rxPort, newPacketCallback);
 
     for (;;)
     {
@@ -155,9 +91,9 @@ int main(int argc, char *argv[])
         usleep(1000);
 
         // ETH --> RING
-        sendFromEthToRing(globalInfo->rxPort, rings[0]);
+        ethToRing.sendPacketBurst();
 
         // ETH <-- ETH
-        sendFromEthToEth(globalInfo->txPort, globalInfo->rxPort);
+        ethToEth.sendPacketBurst();
     }
 }

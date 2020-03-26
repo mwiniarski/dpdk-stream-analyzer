@@ -1,37 +1,16 @@
-#include <iostream>
 #include <unistd.h>
-
-#include <rte_memzone.h>
 #include <vector>
 
-#include <common/common.h>
+#include <rte_memzone.h>
+
+#include <shared.h>
 
 using namespace std;
 
-GlobalInfo* getGlobalInfo()
+void newPacketCallback(Packet &&packet)
 {
-    // Retrieve port info shared by server
-    const rte_memzone *memzone = rte_memzone_lookup(GLOBAL_INFO_NAME);
-
-    if (!memzone)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't read '%s' memzone\n", GLOBAL_INFO_NAME);
-
-    return (GlobalInfo *) memzone->addr;
-}
-
-rte_ring* getRing(uint index)
-{
-    rte_ring* ring;
-
-    string ringName = getRingName(index);
-
-    // Lookup ring
-    ring = rte_ring_lookup(ringName.c_str());
-
-    if (!ring)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't find ring [%s]\n", ringName.c_str());
-
-    return ring;
+    static int c = 0;
+    Logl("App " << c++);
 }
 
 int main(int argc, char* argv[])
@@ -42,22 +21,19 @@ int main(int argc, char* argv[])
         rte_exit(EXIT_FAILURE, "Usage: ./app <index>\n");
 
     // Retrieve global info
-    GlobalInfo* globalInfo = getGlobalInfo();
+    GlobalInfo* info = GlobalInfo::get();
 
     // Retrieve rx ring used by app
     int appIndex = stoi(argv[1]);
-    rte_ring* rxRing = getRing(appIndex);
+    Ring rxRing(appIndex);
 
-    // Set tx ring if this is not the last app in chain
-    rte_ring* txRing = NULL;
-    if (appIndex + 1 < globalInfo->appCount)
-    {
-        txRing = getRing(appIndex + 1);
-    }
-
-    if (txRing)
+    // It is not the last app in chain - send to next ring
+    if (appIndex + 1 < info->appCount)
     {
         Logl(">>> MIDDLE app mode");
+
+        Ring txRing(appIndex + 1);
+        Sender ringToRing(rxRing, txRing, newPacketCallback);
 
         for (;;)
         {
@@ -65,12 +41,16 @@ int main(int argc, char* argv[])
             usleep(1000);
 
             // RING --> RING
-            sendFromRingToRing(rxRing, txRing);
+            ringToRing.sendPacketBurst();
         }
     }
     else
+    // It is the last app - send to eth
     {
         Logl(">>> LAST-IN-CHAIN app mode");
+
+        Port txPort(info->txPort);
+        Sender ringToEth(rxRing, txPort, newPacketCallback);
 
         for (;;)
         {
@@ -78,7 +58,7 @@ int main(int argc, char* argv[])
             usleep(1000);
 
             // RING --> ETH
-            sendFromRingToEth(rxRing, globalInfo->txPort);
+            ringToEth.sendPacketBurst();
         }
     }
 

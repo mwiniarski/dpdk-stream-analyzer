@@ -2,8 +2,6 @@
 #include <ctype.h>
 #define HEXDUMP_COLS 16
 
-void hexdump(void*, unsigned int);
-
 void hexdump(void *mem, unsigned int len)
 {
     unsigned int i, j;
