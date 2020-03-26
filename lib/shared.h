@@ -11,7 +11,9 @@
 #include "Sender.h"
 #include "GlobalInfo.h"
 
-
+/**
+ * Initialize DPDK and remove dpdk-related main() arguments.
+ */
 void initEAL(int &argc, char **argv[])
 {
     int ret = rte_eal_init(argc, *argv);

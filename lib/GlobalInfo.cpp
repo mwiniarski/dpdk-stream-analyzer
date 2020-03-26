@@ -4,7 +4,7 @@ const std::string GlobalInfo::NAME = "GLOBAL_INFO";
 
 GlobalInfo* GlobalInfo::init(std::vector<int> chainSizes)
 {
-    // Keep port info in system-wise accessible way
+    // Allocate system-wise accessible memory
     const rte_memzone *memzone = rte_memzone_reserve(
                                         NAME.c_str(),
                                         sizeof(GlobalInfo),
@@ -21,6 +21,7 @@ GlobalInfo* GlobalInfo::init(std::vector<int> chainSizes)
     if (chainSizes.size() > MAX_CHAINS)
         rte_exit(EXIT_FAILURE, "ERROR: Too many chains specified!\n");
 
+    // Copy values from vector into preallocated shared memory
     gi->chainCount = chainSizes.size();
     for (uint i = 0; i < chainSizes.size(); i++)
     {

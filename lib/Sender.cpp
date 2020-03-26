@@ -10,9 +10,6 @@ Sender::Sender(Device& rx,
  _callback(cb)
 {}
 
-void Sender::startTimer() {}
-void Sender::measureTime() {}
-
 void Sender::sendPacketBurst()
 {
     _rxDevice.getPackets(_buffer);

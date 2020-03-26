@@ -1,13 +1,10 @@
 #include "Port.h"
 
-Port::Port(int p)
-    :Port(p, NULL)
-{}
-
 Port::Port(int p, rte_mempool* mp)
     :_port(p)
 {
-    init(mp);
+    if (mp)
+        init(mp);
 }
 
 void Port::getPackets(Buffer &buf)

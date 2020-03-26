@@ -7,15 +7,13 @@
 
 using namespace std;
 
-// === Settings
-#define MBUF_POOL_NAME "MBUF_POOL"
-#define MBUF_CACHE_SIZE 250
-#define MBUF_COUNT 8192
-// ===
-
 
 rte_mempool* createMemPool()
 {
+    const char* MBUF_POOL_NAME = "MBUF_POOL";
+    const int   MBUF_CACHE_SIZE = 250;
+    const int   MBUF_COUNT = 8019;
+
     // Check ports
     int portCount = rte_eth_dev_count();
 

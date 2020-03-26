@@ -3,16 +3,24 @@
 
 #include <rte_mbuf.h>
 
-struct Buffer 
+/**
+ * Wrapper for an array of rte_mbuf pointers and its size.
+ */
+struct Buffer
 {
     static const int CAPACITY = 32;
 
+    // Current number of used pointers
     int size;
-    rte_mbuf *data[CAPACITY];
 
+    rte_mbuf *data[CAPACITY];
     rte_mbuf* operator [] (int index) { return data[index]; }
 };
 
+/**
+ * Wrapper for pointer to data stored in mbuf and its size.
+ * Used as temporary to pass data to callback.
+ */
 struct Packet
 {
     Packet(rte_mbuf *mbuf) 
