@@ -13,13 +13,13 @@ class Ring : public Device
     static const int SIZE;
 
 public:
-    Ring(int index, bool createNew = false);
+    Ring(uint appIndex, uint chainIndex, bool createNew = false);
 
     void getPackets(Buffer &buffer) override;
     void sendPackets(Buffer &buffer) override;
 
 private:
-    std::string getName(uint index);
+    std::string getName(uint chainNumber, uint chainIndex);
 
     rte_ring *_ring;
 };

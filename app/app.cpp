@@ -18,21 +18,23 @@ int main(int argc, char* argv[])
     initEAL(argc, &argv);
 
     if (argc < 2)
-        rte_exit(EXIT_FAILURE, "Usage: ./app <index>\n");
+        rte_exit(EXIT_FAILURE, "Usage: ./app <chain> <app_in_chain>\n");
+
+    int chainIndex = stoi(argv[1]);
+    int appIndex = stoi(argv[2]);
 
     // Retrieve global info
     GlobalInfo* info = GlobalInfo::get();
 
     // Retrieve rx ring used by app
-    int appIndex = stoi(argv[1]);
-    Ring rxRing(appIndex);
+    Ring rxRing(appIndex, chainIndex);
 
     // It is not the last app in chain - send to next ring
-    if (appIndex + 1 < info->appCount)
+    if (!info->isLastInChain(appIndex, chainIndex))
     {
         Logl(">>> MIDDLE app mode");
 
-        Ring txRing(appIndex + 1);
+        Ring txRing(appIndex + 1, chainIndex);
         Sender ringToRing(rxRing, txRing, newPacketCallback);
 
         for (;;)

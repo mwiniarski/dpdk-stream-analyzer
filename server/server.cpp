@@ -42,17 +42,21 @@ rte_mempool* createMemPool()
     return mbufPool;
 }
 
-vector<Ring> initRings(uint count)
+vector<Ring> initRings(GlobalInfo *gi)
 {
-    vector<Ring> rings;
-    for (uint i = 0; i < count; i++)
+    vector<Ring> firstRings;
+    for (int i = 0; i < gi->chainCount; i++)
     {
-        rings.emplace_back(i, true);
+        // First rings are needed by server, rest is irrelevant
+        firstRings.emplace_back(0, i, true);
 
-        Logl(">>> RING_" << i << " created");
+        for (uint j = 1; j < gi->appsInChain[i]; j++)
+        {
+            Ring(j, i, true);
+        }
     }
 
-    return rings;
+    return firstRings;
 }
 
 void newPacketCallback(Packet &&p)
@@ -66,10 +70,14 @@ int main(int argc, char *argv[])
     initEAL(argc, &argv);
 
     if (argc < 2)
-        rte_exit(EXIT_FAILURE, "Usage: ./server <app_count>\n");
+        rte_exit(EXIT_FAILURE, "Usage: ./server <chain_size_0> [<chain_size_1>...]\n");
+
+    vector<int> chainSizes;
+    for (int i = 1; i < argc; i++)
+        chainSizes.push_back(stoi(argv[i]));
 
     // Take app count as program argument
-    GlobalInfo *info = GlobalInfo::init(stoi(argv[1]));
+    GlobalInfo *info = GlobalInfo::init(chainSizes);
 
     // Create memory pool
     rte_mempool* mp = createMemPool();
@@ -79,21 +87,28 @@ int main(int argc, char *argv[])
     auto txPort = Port(1, mp);
 
     // Initialize memory rings for all apps
-    vector<Ring> rings = initRings(info->appCount);
+    vector<Ring> firstRings = initRings(info);
 
     // Create senders
-    Sender ethToRing(rxPort, rings[0], newPacketCallback);
+    vector<Sender> ethToRingSenders;
+    for (Ring &ring : firstRings)
+        ethToRingSenders.emplace_back(rxPort, ring, newPacketCallback);
+
     Sender ethToEth(txPort, rxPort, newPacketCallback);
 
     for (;;)
     {
-        // Sleep 1ms
-        usleep(1000);
+        // Super simple time-based round-robin
+        for (Sender &ethToRing : ethToRingSenders)
+        {
+            // Sleep 1ms
+            usleep(1000);
 
-        // ETH --> RING
-        ethToRing.sendPacketBurst();
+            // ETH --> RING[i]
+            ethToRing.sendPacketBurst();
 
-        // ETH <-- ETH
-        ethToEth.sendPacketBurst();
+            // ETH <-- ETH
+            ethToEth.sendPacketBurst();
+        }
     }
 }

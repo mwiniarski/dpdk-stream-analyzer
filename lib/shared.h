@@ -5,17 +5,11 @@
 
 #include <rte_eal.h>
 
-#include <Port.h>
-#include <Ring.h>
-#include <Sender.h>
-#include <GlobalInfo.h>
-
-#ifdef LOG
-    #define Log(x)  (std::cout << x)
-#else
-    #define Log(x) do{}while(0)
-#endif // LOG
-#define Logl(x) Log(x << std::endl)
+#include "Log.h"
+#include "Port.h"
+#include "Ring.h"
+#include "Sender.h"
+#include "GlobalInfo.h"
 
 
 void initEAL(int &argc, char **argv[])
