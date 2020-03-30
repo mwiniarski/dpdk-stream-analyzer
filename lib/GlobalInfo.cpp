@@ -1,6 +1,8 @@
 #include "GlobalInfo.h"
 
 const std::string GlobalInfo::NAME = "GLOBAL_INFO";
+const std::string GlobalInfo::STATS_RING = "STATS_RING";
+const std::string GlobalInfo::MEMPOOL = "MBUF_POOL";
 
 GlobalInfo* GlobalInfo::init(std::vector<int> chainSizes)
 {
@@ -23,7 +25,7 @@ GlobalInfo* GlobalInfo::init(std::vector<int> chainSizes)
 
     // Copy values from vector into preallocated shared memory
     gi->chainCount = chainSizes.size();
-    for (uint i = 0; i < chainSizes.size(); i++)
+    for (unsigned i = 0; i < chainSizes.size(); i++)
     {
         if (chainSizes[i] < 1 || chainSizes[i] > MAX_APPS)
             rte_exit(EXIT_FAILURE, "ERROR: Chain size must be > 0 and <= 8 !\n");
@@ -49,7 +51,7 @@ GlobalInfo* GlobalInfo::get()
     return (GlobalInfo *) memzone->addr;
 }
 
-bool GlobalInfo::isLastInChain(uint appIndex, uint chainIndex)
+bool GlobalInfo::isLastInChain(int appIndex, int chainIndex)
 {
     return appIndex + 1 == this->appsInChain[chainIndex];
 }

@@ -23,8 +23,8 @@ public:
     Port(int port, rte_mempool* mp = NULL);
 
     // See Device.h
-    void getPackets(Buffer &buffer) override;
-    void sendPackets(Buffer &buffer) override;
+    void getPackets(MBuffer &buffer) override;
+    void sendPackets(MBuffer &buffer) override;
 
 private:
     /**

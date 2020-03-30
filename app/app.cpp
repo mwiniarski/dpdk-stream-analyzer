@@ -9,8 +9,12 @@ using namespace std;
 
 void newPacketCallback(Packet &&packet)
 {
-    static int c = 0;
-    Logl("App " << c++);
+    static int c = 1;
+
+    if (c++ % 1000 == 0)
+    {
+        Logl("App " << c);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -56,11 +60,10 @@ int main(int argc, char* argv[])
 
         for (;;)
         {
-            // Sleep 1ms
-            usleep(1000);
-
             // RING --> ETH
             ringToEth.sendPacketBurst();
+
+            usleep(100);
         }
     }
 

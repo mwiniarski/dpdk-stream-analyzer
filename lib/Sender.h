@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "Device.h"
+#include "Statistics.h"
 
 /**
  * Class used to transfer packets from one Device to another. Inbetween
@@ -16,9 +17,9 @@ public:
     /**
      * Setup connection between rx and dx with function called inbetween.
      *
-     * @param rx    Device to receive packets from
-     * @param tx    Device to send packets to
-     * @param cb    Function called between packet transfers
+     * @param rx     Device to receive packets from
+     * @param tx     Device to send packets to
+     * @param cb     Function called between packet transfers
      */
     Sender(Device& rx,
            Device& tx,
@@ -30,8 +31,12 @@ public:
     void sendPacketBurst();
 
 private:
+
+    // Save timers of packets and send them if needed
+    void collectStats();
+
     // Array of mbufs used to transfer packets
-    Buffer _buffer;
+    MBuffer _buffer;
 
     // Devices - can be either port or ring
     Device& _rxDevice;
@@ -39,6 +44,9 @@ private:
 
     // Function called in the middle of transfer
     std::function<void (Packet &&p)> _callback;
+
+    // Stats
+    std::unique_ptr<Statistics> _stats;
 };
 
 #endif

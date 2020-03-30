@@ -6,7 +6,7 @@
 /**
  * Wrapper for an array of rte_mbuf pointers and its size.
  */
-struct Buffer
+struct MBuffer
 {
     static const int CAPACITY = 32;
 

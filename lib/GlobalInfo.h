@@ -1,7 +1,6 @@
 #ifndef __GLOBALINFO__
 #define __GLOBALINFO__
 
-#include <cstdint>
 #include <string>
 #include <cstring>
 #include <vector>
@@ -19,6 +18,8 @@ struct GlobalInfo
 {
     // String identifier of shared memory
     static const std::string NAME;
+    static const std::string STATS_RING;
+    static const std::string MEMPOOL;
     static const int MAX_CHAINS = 8;
     static const int MAX_APPS = 8;
 
@@ -46,17 +47,17 @@ struct GlobalInfo
      * Calculate if app with given index and chain index is the last in
      * the chain based on the current information stored in shared memory.
      */
-    bool isLastInChain(uint appIndex, uint chainIndex);
+    bool isLastInChain(int appIndex, int chainIndex);
 
     // Values that influence size of struct
 
     // Ethernet ports
-    uint16_t rxPort;
-    uint16_t txPort;
+    int rxPort;
+    int txPort;
 
     // Chain values
-    uint16_t chainCount;
-    uint16_t appsInChain[MAX_CHAINS];
+    int chainCount;
+    int appsInChain[MAX_CHAINS];
 };
 
 

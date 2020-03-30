@@ -48,7 +48,7 @@ vector<Ring> initRings(GlobalInfo *gi)
         // First rings are needed by server, rest is irrelevant
         firstRings.emplace_back(0, i, true);
 
-        for (uint j = 1; j < gi->appsInChain[i]; j++)
+        for (int j = 1; j < gi->appsInChain[i]; j++)
         {
             Ring(j, i, true);
         }
@@ -59,8 +59,12 @@ vector<Ring> initRings(GlobalInfo *gi)
 
 void newPacketCallback(Packet &&p)
 {
-    static int c = 0;
-    Logl("Server " << c++);
+    static int c = 1;
+
+    if (c++ % 1000 == 0)
+    {
+        Logl("Server " << c);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -81,16 +85,21 @@ int main(int argc, char *argv[])
     rte_mempool* mp = createMemPool();
 
     // Initialize eth ports
-    auto rxPort = Port(0, mp);
-    auto txPort = Port(1, mp);
+    Port rxPort(0, mp);
+    Port txPort(1, mp);
 
     // Initialize memory rings for all apps
     vector<Ring> firstRings = initRings(info);
 
+    // Initialize statistics ring
+    Ring(info->STATS_RING, true);
+
     // Create senders
     vector<Sender> ethToRingSenders;
     for (Ring &ring : firstRings)
-        ethToRingSenders.emplace_back(rxPort, ring, newPacketCallback);
+        ethToRingSenders.emplace_back(rxPort,
+                                      ring,
+                                      newPacketCallback);
 
     Sender ethToEth(txPort, rxPort, newPacketCallback);
 
@@ -99,14 +108,13 @@ int main(int argc, char *argv[])
         // Super simple time-based round-robin
         for (Sender &ethToRing : ethToRingSenders)
         {
-            // Sleep 1ms
-            usleep(1000);
-
             // ETH --> RING[i]
             ethToRing.sendPacketBurst();
 
             // ETH <-- ETH
             ethToEth.sendPacketBurst();
+
+            usleep(100);
         }
     }
 }

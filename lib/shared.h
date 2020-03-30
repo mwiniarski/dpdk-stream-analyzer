@@ -9,7 +9,6 @@
 #include "Port.h"
 #include "Ring.h"
 #include "Sender.h"
-#include "GlobalInfo.h"
 
 /**
  * Initialize DPDK and remove dpdk-related main() arguments.

@@ -1,19 +1,30 @@
 #include "Port.h"
 
+#include <rte_cycles.h>
+
 Port::Port(int p, rte_mempool* mp)
-    :_port(p)
+    :Device(-1, p),
+     _port(p)
 {
+    // If mempool specified, initialize new port
     if (mp)
         init(mp);
 }
 
-void Port::getPackets(Buffer &buf)
+void Port::getPackets(MBuffer &buf)
 {
     // Get packets from eth
     buf.size = rte_eth_rx_burst(_port, 0, buf.data, buf.CAPACITY);
+
+    // Put a timestamp into every packet
+    uint64_t now = rte_rdtsc();
+    for (int i = 0; i < buf.size; i++)
+    {
+        buf.data[i]->udata64 = now;
+    }
 }
 
-void Port::sendPackets(Buffer &buf)
+void Port::sendPackets(MBuffer &buf)
 {
     // Send packets to eth
     int txCount = rte_eth_tx_burst(_port, 0, buf.data, buf.size);
