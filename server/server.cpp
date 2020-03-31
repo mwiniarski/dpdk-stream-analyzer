@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     vector<Ring> firstRings = initRings(info);
 
     // Initialize statistics ring
-    Ring(info->STATS_RING, true);
+    Ring(info->STATS_RING);
 
     // Create senders
     vector<Sender> ethToRingSenders;
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
             // ETH <-- ETH
             ethToEth.sendPacketBurst();
 
-            usleep(100);
+            usleep(1000);
         }
     }
 }

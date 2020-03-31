@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
             // RING --> ETH
             ringToEth.sendPacketBurst();
 
-            usleep(100);
+            usleep(1000);
         }
     }
 

@@ -2,6 +2,7 @@ import subprocess as sp
 import time
 import os
 import signal
+import sys
 
 def start_proc(cmd):
 
@@ -51,7 +52,10 @@ def run():
 
 
     # === run for some time
-    time.sleep(5)
+    if len(sys.argv) == 2:
+        time.sleep(int(sys.argv[1]))
+    else:
+        time.sleep(5)
     # ===
 
     # stop apps

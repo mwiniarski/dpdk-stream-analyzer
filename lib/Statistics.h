@@ -6,7 +6,7 @@
 
 #include <rte_cycles.h>
 
-#include "Ring.h"
+#include "Messenger.h"
 #include "GlobalInfo.h"
 #include "Log.h"
 
@@ -32,11 +32,6 @@ public:
         _buffer[_size++] = cycles / PACKETS_MAX;
         cycles = packets = 0;
 
-        Logl((_type ? "APP[" : "ETH[")
-                << _chainIndex << ", "
-                << _appIndex << "]: "
-                << ((double) _buffer[_size - 1] / (double) rte_get_timer_hz()) * 1000000 << "us");
-
         // 1 second passed or buffer full
         if (rte_rdtsc() - _lastSent > rte_get_timer_hz() ||
             _size == BUFFER_MAX)
@@ -52,24 +47,22 @@ private:
         _lastSent = rte_rdtsc();
 
         // SEND  (TODO)
-        Ring::MessageHeader mh;
-        mh.dataLength = _size * sizeof(uint64_t);
-        mh.reporter = Ring::MessageHeader::ETH;
-        mh.appIndex = 1;
-        mh.chainIndex = 1;
-        mh.data = (uint8_t*) _buffer;
+        Messenger::Header h =
+        {
+            .reporter = (Messenger::Header::Type) _type,
+            .chainIndex = _chainIndex,
+            .appIndex = _appIndex,
+            .dataLength = _size
+        };
 
-        _statsRing.sendMessage(mh);
+        _messenger.sendMessage(h, _buffer);
         // ====
 
         _size = 0;
     }
 
-
     // Accumulative counter
-    static const int BUFFER_MAX =
-            RTE_MBUF_DEFAULT_DATAROOM / sizeof(uint64_t);
-
+    static const int BUFFER_MAX = Messenger::BUFFER_MAX;
     uint64_t _buffer[BUFFER_MAX];
     int _size = 0;
 
@@ -80,7 +73,7 @@ private:
 
     // Initial values for timer and message ring
     uint64_t _lastSent {rte_rdtsc()};
-    Ring _statsRing {GlobalInfo::STATS_RING};
+    Messenger _messenger {GlobalInfo::MEMPOOL, GlobalInfo::STATS_RING};
 };
 
 #endif

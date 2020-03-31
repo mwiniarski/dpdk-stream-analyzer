@@ -10,37 +10,22 @@ const int Ring::SIZE = 128;
 Ring::Ring(int appInd, int chainInd, bool createNew)
     :Device(chainInd, appInd)
 {
-    init(getName(_chainIndex, _appIndex), createNew);
-}
+    string name = getName(_chainIndex, _appIndex);
 
-Ring::Ring(const std::string& name, bool createNew)
-{
-    init(name, createNew);
-
-    // This constructor is used to communicate stats, hence mempool
-    getMempool();
-}
-
-void Ring::init(const std::string& name, bool createNew)
-{
     if (createNew)
         create(name);
     else
         lookup(name);
 }
 
-void Ring::getMempool()
+Ring::Ring(const std::string& name)
 {
-    _mempool = rte_mempool_lookup(GlobalInfo::MEMPOOL.c_str());
-
-    if(!_mempool)
-        rte_exit(EXIT_FAILURE, "ERROR: Can't find mempool [%s]\n",
-                                            GlobalInfo::MEMPOOL.c_str());
+    create(name);
 }
 
 void Ring::create(const std::string& ringName)
 {
-    _ring = rte_ring_create(ringName.c_str(), SIZE, rte_socket_id(), 0);
+    _ring = rte_ring_create(ringName.c_str(), SIZE, rte_socket_id(), RING_F_SC_DEQ);
 
     if (!_ring)
         rte_exit(EXIT_FAILURE, "ERROR: Can't create ring [%s]\n", ringName.c_str());
@@ -80,24 +65,4 @@ void Ring::sendPackets(MBuffer &buf)
 
         _dropped += buf.size;
     }
-}
-
-void Ring::sendMessage(const MessageHeader& mh)
-{
-    uint8_t *memory = NULL;
-
-    if (rte_mempool_get(_mempool, (void **) &memory) != 0)
-        rte_panic("ERROR: Can't get message buffer\n");
-
-    // COPY of packets - can be changed later
-    memcpy(memory, &mh, sizeof(mh));
-    memcpy(memory + sizeof(mh), mh.data, mh.dataLength);
-
-    // Send to ring
-    if (rte_ring_mp_enqueue(_ring, memory) < 0) {
-		Logl("Error: Failed to send message");
-
-        // Put back
-		rte_mempool_put(_mempool, memory);
-	}
 }
