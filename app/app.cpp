@@ -33,38 +33,37 @@ int main(int argc, char* argv[])
     // Retrieve rx ring used by app
     Ring rxRing(appIndex, chainIndex);
 
+    unique_ptr<Sender> sender;
+
+    // Use either ring or port for TX
+    unique_ptr<Ring> txRing;
+    unique_ptr<Port> txPort;
+
     // It is not the last app in chain - send to next ring
     if (!info->isLastInChain(appIndex, chainIndex))
     {
         Logl(">>> MIDDLE app mode");
 
-        Ring txRing(appIndex + 1, chainIndex);
-        Sender ringToRing(rxRing, txRing, newPacketCallback);
-
-        for (;;)
-        {
-            // Sleep 1ms
-            usleep(1000);
-
-            // RING --> RING
-            ringToRing.sendPacketBurst();
-        }
+        txRing = make_unique<Ring>(appIndex + 1, chainIndex);
+        sender = make_unique<Sender>(rxRing, *txRing, newPacketCallback);
     }
     else
     // It is the last app - send to eth
     {
         Logl(">>> LAST-IN-CHAIN app mode");
 
-        Port txPort(info->txPort);
-        Sender ringToEth(rxRing, txPort, newPacketCallback);
+        txPort = make_unique<Port>(info->txPort);
+        sender = make_unique<Sender>(rxRing, *txPort, newPacketCallback);
+    }
 
-        for (;;)
-        {
-            // RING --> ETH
-            ringToEth.sendPacketBurst();
+    // Main loop
+    for (;;)
+    {
+        // RING --> ETH
+        sender->sendPacketBurst();
 
-            usleep(1000);
-        }
+        // TODO: figure out something better
+        pthread_yield();
     }
 
 }

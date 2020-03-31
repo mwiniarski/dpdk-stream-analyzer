@@ -49,7 +49,7 @@ string Ring::getName(int chainIndex, int appIndex)
 void Ring::getPackets(MBuffer &buf)
 {
     // Get packets from ring
-    buf.size = rte_ring_dequeue_burst(_ring, (void**) buf.data, buf.CAPACITY, NULL);
+    buf.size = rte_ring_sc_dequeue_burst(_ring, (void**) buf.data, buf.CAPACITY, NULL);
 }
 
 void Ring::sendPackets(MBuffer &buf)

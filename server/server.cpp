@@ -113,8 +113,6 @@ int main(int argc, char *argv[])
 
             // ETH <-- ETH
             ethToEth.sendPacketBurst();
-
-            usleep(1000);
         }
     }
 }

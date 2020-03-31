@@ -4,7 +4,7 @@ project(DPDK_test)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "-Wall -mssse3 -g -DLOG")
+set(CMAKE_CXX_FLAGS "-Wall -mssse3 -g -O0 -DLOG")
 
 file(GLOB lib_src lib/*)
 

@@ -28,9 +28,9 @@ def run():
 
     # server  = always on core 0
     # numbers = cores to run things on
-    setup = [[1, 2, 3, 4, 5, 6],
+    setup = [[1, 2, 3, 4],
              [1, 2, 3, 4],
-             [1, 2]             ]
+             [1, 2, 3, 4]]
 
     # prepare arguments
     server_args = ' '.join([str(len(x)) for x in setup])
