@@ -30,7 +30,6 @@ void Sender::sendPacketBurst()
     _txDevice.sendPackets(_buffer);
 }
 
-
 void Sender::collectStats()
 {
     int i = 0;
@@ -44,7 +43,10 @@ void Sender::collectStats()
     {
         // Add remaining packets to counter
         for (; i < _buffer.size - overflow; i++)
-            _stats->cycles += (now - _buffer.data[i]->udata64);
+        {
+            _stats->data.cycles += (now - _buffer.data[i]->udata64);
+            _stats->data.bytes  += _buffer.data[i]->pkt_len;
+        }
 
         // Move packets from counter to buffer of averages
         _stats->flush();
@@ -52,7 +54,13 @@ void Sender::collectStats()
 
     // Add remaining packets to counter
     for (; i < _buffer.size; i++)
-        _stats->cycles += (now - _buffer.data[i]->udata64);
+    {
+        _stats->data.cycles += (now - _buffer.data[i]->udata64);
+        _stats->data.bytes  += _buffer.data[i]->pkt_len;
+    }
 
     _stats->packets += _buffer.size;
+
+    // Update the number of buffers used
+    _stats->data.linkCap += _buffer.CAPACITY;
 }

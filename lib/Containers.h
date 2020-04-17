@@ -26,11 +26,11 @@ struct Packet
     Packet(rte_mbuf *mbuf) 
     {
         size = mbuf->data_len;
-        data = (char*) mbuf->buf_addr + mbuf->data_off;
+        data = (uint8_t*) mbuf->buf_addr + mbuf->data_off;
     }
 
     int size;
-    void *data;
+    uint8_t *data;
 };
 
 #endif

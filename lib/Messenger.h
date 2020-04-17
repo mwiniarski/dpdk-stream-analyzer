@@ -11,9 +11,12 @@
 class Messenger
 {
 public:
-    using buff_type = uint64_t;
-
-    static const int BUFFER_MAX = RTE_MBUF_DEFAULT_BUF_SIZE / sizeof(buff_type);
+    struct Data
+    {
+        uint64_t cycles;
+        uint64_t bytes;
+        uint32_t linkCap;
+    };
 
     struct Header
     {
@@ -22,9 +25,12 @@ public:
         Type reporter;
         int chainIndex;
         int appIndex;
-
         int dataLength;   // Count of elements stored in buffer
+        int64_t timestamp;
     };
+
+    static const int BUFFER_MAX = (RTE_MBUF_DEFAULT_BUF_SIZE - sizeof(Header)) / sizeof(Data);
+    static const int PACKETS_PER_DATA_POINT = 1024;
 
 public:
     /**
@@ -43,7 +49,7 @@ public:
      * @param header    Header with at least correctly filled dataLenght
      * @param data      Buffer of max size BUFFER_MAX * sizeof(buff_type)
      */
-    void sendMessage(const Header& header, buff_type* data);
+    void sendMessage(const Header& header, Data* data);
 
     /**
      * Receive a message via ring communication and copy it
@@ -52,7 +58,7 @@ public:
      * @param header    Empty header. Received header will be copied into it
      * @param data      Allocated data of size BUFFER_MAX * sizeof(buff_type)
      */
-    void recvMessage(Header& header, buff_type* data);
+    void recvMessage(Header& header, Data* data);
 
 private:
     // Find existing mempool by name

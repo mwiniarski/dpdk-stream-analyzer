@@ -2,20 +2,23 @@
 
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include <shared.h>
 
-using namespace std;
+#include <rte_lcore.h>
 
+using namespace std;
+using namespace std::chrono;
 
 rte_mempool* createMemPool()
 {
     const char* MBUF_POOL_NAME = "MBUF_POOL";
-    const int   MBUF_CACHE_SIZE = 250;
-    const int   MBUF_COUNT = 8019;
+    const int   MBUF_CACHE_SIZE = 500;
+    const int   MBUF_COUNT = 65535;
 
     // Check ports
-    int portCount = rte_eth_dev_count();
+    int portCount = rte_eth_dev_count_avail();
 
     if (portCount < 2)
         rte_exit(EXIT_FAILURE, "ERROR: At least 2 ports needed, found %d\n", portCount);
@@ -59,12 +62,8 @@ vector<Ring> initRings(GlobalInfo *gi)
 
 void newPacketCallback(Packet &&p)
 {
-    static int c = 1;
-
-    if (c++ % 1000 == 0)
-    {
-        Logl("Server " << c);
-    }
+    static uint64_t c = 0;
+    c++;
 }
 
 int main(int argc, char *argv[])
@@ -80,6 +79,7 @@ int main(int argc, char *argv[])
 
     // Take app count as program argument
     GlobalInfo *info = GlobalInfo::init(chainSizes);
+    info->loopsBeforeSwitch = 100;
 
     // Create memory pool
     rte_mempool* mp = createMemPool();

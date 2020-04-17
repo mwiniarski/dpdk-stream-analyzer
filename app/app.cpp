@@ -10,11 +10,6 @@ using namespace std;
 void newPacketCallback(Packet &&packet)
 {
     static int c = 1;
-
-    if (c++ % 1000 == 0)
-    {
-        Logl("App " << c);
-    }
 }
 
 int main(int argc, char* argv[])
@@ -62,8 +57,7 @@ int main(int argc, char* argv[])
         // RING --> ETH
         sender->sendPacketBurst();
 
-        // TODO: figure out something better
-        pthread_yield();
+        mic_sleep(info->loopsBeforeSwitch);
     }
 
 }

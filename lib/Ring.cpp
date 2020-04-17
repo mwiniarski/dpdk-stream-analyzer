@@ -25,7 +25,7 @@ Ring::Ring(const std::string& name)
 
 void Ring::create(const std::string& ringName)
 {
-    _ring = rte_ring_create(ringName.c_str(), SIZE, rte_socket_id(), RING_F_SC_DEQ);
+    _ring = rte_ring_create(ringName.c_str(), SIZE, rte_socket_id(), 0);
 
     if (!_ring)
         rte_exit(EXIT_FAILURE, "ERROR: Can't create ring [%s]\n", ringName.c_str());

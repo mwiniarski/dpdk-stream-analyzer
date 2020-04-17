@@ -58,6 +58,8 @@ struct GlobalInfo
     // Chain values
     int chainCount;
     int appsInChain[MAX_CHAINS];
+
+    int loopsBeforeSwitch;
 };
 
 

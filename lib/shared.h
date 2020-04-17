@@ -11,6 +11,20 @@
 #include "Sender.h"
 
 /**
+ * Common sleep for app and server
+ */
+void mic_sleep(int loopsBeforeSwitch)
+{
+    static uint64_t counter = 0;
+    // timespec t = {0, 1};
+    // nanosleep(&t, NULL);
+
+    if (++counter % loopsBeforeSwitch == 0)
+        sched_yield();
+}
+
+
+/**
  * Initialize DPDK and remove dpdk-related main() arguments.
  */
 void initEAL(int &argc, char **argv[])
@@ -21,5 +35,23 @@ void initEAL(int &argc, char **argv[])
 
     argc -= ret;
     *argv += ret;
+}
+
+
+/**
+ * Set real-time scheduling of current thread
+ */
+void schedule(int policy)
+{
+    return;
+    sched_param sp = { .sched_priority = 1 };
+
+    pthread_setschedparam(pthread_self(), policy, &sp);
+    pthread_getschedparam(pthread_self(), &policy, &sp);
+
+    Logl(">>> Policy = " <<
+        ((policy == SCHED_FIFO)  ? "SCHED_FIFO" :
+        (policy == SCHED_RR)    ? "SCHED_RR" :
+        "SCHED_OTHER") << " priority = " << sp.sched_priority);
 }
 #endif

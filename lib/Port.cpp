@@ -48,7 +48,7 @@ int Port::init(rte_mempool *mbufPool)
     // Configure eth device
     rte_eth_conf portConf;
     memset(&portConf, 0, sizeof(rte_eth_conf));
-    portConf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
+    portConf.rxmode.max_rx_pkt_len = RTE_ETHER_MAX_LEN;
 
     // Set 1 rx and 1 tx queue for given port
     ret = rte_eth_dev_configure(_port, 1, 1, &portConf);

@@ -29,7 +29,7 @@ void Messenger::lookupRing(const std::string& ringName)
                                             ringName.c_str());
 }
 
-void Messenger::sendMessage(const Header& mh, buff_type *data)
+void Messenger::sendMessage(const Header& mh, Data *data)
 {
     uint8_t *memory = NULL;
 
@@ -38,7 +38,7 @@ void Messenger::sendMessage(const Header& mh, buff_type *data)
 
     // COPY of packets - can be changed later
     memcpy(memory, &mh, sizeof(mh));
-    memcpy(memory + sizeof(mh), data, mh.dataLength * sizeof(buff_type));
+    memcpy(memory + sizeof(mh), data, mh.dataLength * sizeof(Data));
 
     // Send to ring
     if (rte_ring_mp_enqueue(_ring, memory) < 0) {
@@ -49,11 +49,11 @@ void Messenger::sendMessage(const Header& mh, buff_type *data)
 	}
 }
 
-void Messenger::recvMessage(Header& mh, buff_type* data)
+void Messenger::recvMessage(Header& mh, Data* data)
 {
     uint8_t *memory = NULL;
 
-    while (rte_ring_dequeue(_ring, (void **) &memory) != 0)
+    while (rte_ring_sc_dequeue(_ring, (void **) &memory) != 0)
     {
         usleep(1000);
         continue;
@@ -61,7 +61,7 @@ void Messenger::recvMessage(Header& mh, buff_type* data)
 
     // COPY of packets - can be changed later
     memcpy(&mh, memory, sizeof(mh));
-    memcpy(data, memory + sizeof(mh), mh.dataLength * sizeof(buff_type));
+    memcpy(data, memory + sizeof(mh), mh.dataLength * sizeof(Data));
 
     // Put back memory
     rte_mempool_put(_mempool, memory);

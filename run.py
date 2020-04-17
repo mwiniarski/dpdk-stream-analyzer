@@ -40,15 +40,19 @@ def run():
 
     time.sleep(1)
 
+    # EAL lcore number, every program must have different. 0 - server, 1 - logger, >2 apps
+    unique_id = 2
+
     # run apps
     apps = []
     for i, chain in enumerate(setup):
         apps.append([])
         for j, core in enumerate(chain):
             apps[-1].append(
-                start_proc("./build/app -n 1 -l {} --proc-type=auto {} {}"
-                    .format(core, i, j))
+                start_proc("./build/app -n 1 --lcores={}@{} --proc-type=auto {} {}"
+                    .format(unique_id, core, i, j))
             )
+            unique_id += 1
 
 
     # === run for some time
