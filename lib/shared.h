@@ -39,7 +39,7 @@ void initEAL(int &argc, char **argv[])
 
 
 /**
- * Set real-time scheduling of current thread
+ * Set real-time scheduling of current thread.
  */
 void schedule(int policy)
 {
@@ -54,4 +54,24 @@ void schedule(int policy)
         (policy == SCHED_RR)    ? "SCHED_RR" :
         "SCHED_OTHER") << " priority = " << sp.sched_priority);
 }
+
+/**
+ * Perform some artificial work related to packet size.
+ * 
+ * Work amount = O(packet.size * repeats)
+ */
+int calcPacketHash(Packet& packet, int repeats)
+{
+    int hash = 0;
+    for (int r = 0; r < repeats; r++)
+    {
+        for (int i = 0; i < packet.size; i++)
+        {
+            hash += packet.data[i];
+        }
+    }
+
+    return hash;
+}
+
 #endif

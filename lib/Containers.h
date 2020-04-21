@@ -11,9 +11,9 @@ struct MBuffer
     static const int CAPACITY = 32;
 
     // Current number of used pointers
-    int size;
+    uint size;
 
-    rte_mbuf *data[CAPACITY];
+    rte_mbuf* data[CAPACITY];
     rte_mbuf* operator [] (int index) { return data[index]; }
 };
 

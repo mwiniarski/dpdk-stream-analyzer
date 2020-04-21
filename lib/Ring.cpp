@@ -5,7 +5,7 @@
 using namespace std;
 
 const string Ring::PREFIX = "RING_";
-const int Ring::SIZE = 128;
+const int Ring::SIZE = 1024;
 
 Ring::Ring(int appInd, int chainInd, bool createNew)
     :Device(chainInd, appInd)
@@ -52,17 +52,21 @@ void Ring::getPackets(MBuffer &buf)
     buf.size = rte_ring_sc_dequeue_burst(_ring, (void**) buf.data, buf.CAPACITY, NULL);
 }
 
-void Ring::sendPackets(MBuffer &buf)
+int Ring::sendPackets(MBuffer &buf)
 {
     // Send to ring
-    int txCount = rte_ring_sp_enqueue_bulk(_ring, (void**) buf.data, buf.size, NULL);
+    uint free_space;
+    uint txCount = rte_ring_sp_enqueue_bulk(_ring, (void**) buf.data, buf.size, &free_space);
+
+    if (free_space < buf.CAPACITY)
+        Logl("Free space low! [" << free_space << "]");
 
     // Free mbufs that were not sent
     if (txCount != buf.size)
     {
-        for (int i = 0; i < buf.size; i++)
+        for (uint i = 0; i < buf.size; i++)
             rte_pktmbuf_free(buf[i]);
-
-        _dropped += buf.size;
     }
+
+    return buf.size - txCount;
 }

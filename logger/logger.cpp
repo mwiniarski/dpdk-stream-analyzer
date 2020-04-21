@@ -32,14 +32,16 @@ void runCPUMeasurements(string& url)
     GlobalInfo* info = GlobalInfo::get();
     auto influxdb2 = influxdb::InfluxDBFactory::Get(url);
     auto currTime = system_clock::now();
-    influxdb2->write(influxdb::Point{"CPULoops"}
+    influxdb2->write(influxdb::Point{"LoopsAndWork"}
         .addField("loops", info->loopsBeforeSwitch)
+        .addField("work", info->packetWork)
         .setTimestamp(currTime));
-#endif
 
+    uint stage = 1;
+#endif
     for (;;)
     {
-        sleep(2);
+        sleep(1);
 
         auto newStats = readStatsCPU();
         auto diffs = calculateUsage(oldStats, newStats);
@@ -57,14 +59,19 @@ void runCPUMeasurements(string& url)
         }
 
 #ifdef LOOP_EXPERIMENT
-        if (now - currTime > 8s)
+        if (now - currTime > 1.5s)
         {
-            info->loopsBeforeSwitch *= 2;
+            if (info->loopsBeforeSwitch == 5)
+                break;
+
+            info->loopsBeforeSwitch -= 5;
+            stage++;
             currTime = now;
             Logl("Loops: " << info->loopsBeforeSwitch);
 
-            influxdb2->write(influxdb::Point{"CPULoops"}
+            influxdb2->write(influxdb::Point{"LoopsAndWork"}
                 .addField("loops", info->loopsBeforeSwitch)
+                .addField("work", info->packetWork)
                 .setTimestamp(now));
         }
 #endif
@@ -84,6 +91,7 @@ int main(int argc, char* argv[])
 
     // Retrieve global info
     GlobalInfo* info = GlobalInfo::get();
+    info->packetWork = stoi(argv[2]);
 
     // Get the messenger to receive packets
     Messenger messenger(info->MEMPOOL, info->STATS_RING);
@@ -91,7 +99,8 @@ int main(int argc, char* argv[])
     Messenger::Header mh;
     Messenger::Data buffer[Messenger::BUFFER_MAX];
 
-    time_point<system_clock> lastTimePoint[10][10] = {system_clock::now()};
+    time_point<system_clock> timePointsApp[10][10] = {system_clock::now()};
+    time_point<system_clock> timePointsEth[11][2]  = {system_clock::now()};
 
     // Run CPU measurements in separate thread
     thread(&runCPUMeasurements, ref(url)).detach();
@@ -104,9 +113,19 @@ int main(int argc, char* argv[])
 
         time_point<system_clock> tp(microseconds(mh.timestamp));
 
-        auto &ltp = lastTimePoint[mh.chainIndex == -1 ? 9 : mh.chainIndex][mh.appIndex];
-        int64_t delta = duration_cast<microseconds>(tp - ltp).count();
-        ltp = tp;
+        system_clock::time_point *ltp;
+
+        if (mh.reporter == mh.ETH)
+        {
+            ltp = &timePointsEth[mh.chainIndex + 1][mh.appIndex];
+        }
+        else
+        {
+            ltp = &timePointsApp[mh.chainIndex][mh.appIndex];
+        }
+
+        int64_t delta = duration_cast<microseconds>(tp - *ltp).count();
+        *ltp = tp;
 
         // Means
         uint64_t meanLatency = 0;
@@ -122,12 +141,15 @@ int main(int argc, char* argv[])
 
         meanLatency /= mh.dataLength * Messenger::PACKETS_PER_DATA_POINT; // In cycles per packet
         double meanLinkCap = (double) mh.dataLength * Messenger::PACKETS_PER_DATA_POINT / (double) linkCap;  // In packets per available space
-        int throughput = 1000000 * bytes / delta; // In bytes per second
+        Logl("Bytes: " << bytes << " delta: " << delta);
+        long long throughput = 1000000 * bytes / delta; // In bytes per second
 
         Logl(title << " [" << mh.chainIndex << ", " << mh.appIndex << "] - " << mh.dataLength << " pkts" << setprecision(3)
                    << ", mean = " << getMicro(meanLatency) << "us "
                    << "link = " << meanLinkCap * 100 << "% "
                    << "speed = " << throughput / 1024 << "kB/s");
+
+        double droppedPercent = 100.0f * (double) mh.dropped / (mh.dataLength * Messenger::PACKETS_PER_DATA_POINT);
 
         if (!seriesName.empty())
         {
@@ -135,9 +157,10 @@ int main(int argc, char* argv[])
                 .addTag("type", title)
                 .addTag("chain", to_string(mh.chainIndex))
                 .addTag("index", to_string(mh.appIndex))
-                .addField("throughput", throughput / 1024)
+                .addField("throughput", (throughput / 1024))
                 .addField("latency", getMicro(meanLatency))
                 .addField("link", meanLinkCap * 100)
+                .addField("dropped", droppedPercent)
                 .setTimestamp(tp));
         }
     }

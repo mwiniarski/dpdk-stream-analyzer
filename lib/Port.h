@@ -19,18 +19,24 @@ public:
      *
      * @param port  Eth port number
      * @param mp    Used for initialization. Should only be passed by server.
+     * @param tx    Tx queues count.
      */
-    Port(int port, rte_mempool* mp = NULL);
+    Port(int port, rte_mempool* mp = NULL, int tx = 1);
+
+    // Set the queue index used for tx
+    void setTxIndex(int txIndex);
 
     // See Device.h
     void getPackets(MBuffer &buffer) override;
-    void sendPackets(MBuffer &buffer) override;
+    int sendPackets(MBuffer &buffer) override;
 
 private:
     /**
      * Used by constructor to initialize rte_eth port.
      */
-    int init(rte_mempool *mbufPool);
+    int init(rte_mempool *mbufPool, int txCount);
+
+    int _txIndex = 0;
 
 private:
     int _port;

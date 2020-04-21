@@ -18,19 +18,24 @@ def stop_proc(proc):
     # get output
     out, err = proc.communicate()
     out = out.decode('utf-8')
+    err = err.decode('utf-8')
 
     if 'Error' not in out:
         out = '\n'.join([line for line in out.splitlines() if 'EAL' not in line])
+        err = '\n'.join([line for line in err.splitlines() if 'EAL' not in line])
 
-    return out
+    return out, err
 
 def run():
 
     # server  = always on core 0
     # numbers = cores to run things on
-    setup = [[1, 2, 3, 4],
-             [1, 2, 3, 4],
-             [1, 2, 3, 4]]
+    setup = [[1, 2],
+             [1, 2],
+             [1, 2],
+             [1, 2],
+             [1, 2],
+             [1, 2]]
 
     # prepare arguments
     server_args = ' '.join([str(len(x)) for x in setup])
@@ -40,7 +45,7 @@ def run():
 
     time.sleep(1)
 
-    # EAL lcore number, every program must have different. 0 - server, 1 - logger, >2 apps
+    # EAL lcore number, every program must have different. 0 - server, 1 - logger, >=2 apps
     unique_id = 2
 
     # run apps
@@ -54,23 +59,22 @@ def run():
             )
             unique_id += 1
 
-
-    # === run for some time
-    if len(sys.argv) == 2:
-        time.sleep(int(sys.argv[1]))
-    else:
-        time.sleep(5)
-    # ===
+    input("Press Enter to stop...")
 
     # stop apps
     for i, chain in enumerate(apps):
         for j, app in enumerate(chain):
             print("APP [{}, {}]".format(i, j))
-            print(stop_proc(app) + "\n")
+            out, err = stop_proc(app)
+            print(out + "\n")
+            print(err + "\n")
+
 
     # stop server
     print("SERVER")
-    print(stop_proc(server) + "\n")
+    out, err = stop_proc(server)
+    print(out + "\n")
+    print(err + "\n")
 
 
 if __name__ == '__main__':

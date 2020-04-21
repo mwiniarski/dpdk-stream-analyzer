@@ -31,7 +31,7 @@ public:
      *
      * @param buffer[in] Packets to be sent.
      */
-    virtual void sendPackets(MBuffer &buffer) = 0;
+    virtual int sendPackets(MBuffer &buffer) = 0;
 
     /**
      * Get chain and app indices regarding to the system.
@@ -48,10 +48,6 @@ public:
     bool isApp() { return _chainIndex != -1; }
 
 protected:
-
-    // Packets dropped while sending to device
-    int _dropped = 0;
-
     // Position in the system
     int _chainIndex;
     int _appIndex;

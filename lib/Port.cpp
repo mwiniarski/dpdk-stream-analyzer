@@ -1,15 +1,18 @@
 #include "Port.h"
+#include "Log.h"
 
 #include <rte_cycles.h>
 
-Port::Port(int p, rte_mempool* mp)
+Port::Port(int p, rte_mempool* mp, int tx)
     :Device(-1, p),
      _port(p)
 {
     // If mempool specified, initialize new port
     if (mp)
-        init(mp);
+        init(mp, tx);
 }
+
+void Port::setTxIndex(int txIndex) { _txIndex = txIndex; }
 
 void Port::getPackets(MBuffer &buf)
 {
@@ -18,28 +21,28 @@ void Port::getPackets(MBuffer &buf)
 
     // Put a timestamp into every packet
     uint64_t now = rte_rdtsc();
-    for (int i = 0; i < buf.size; i++)
+    for (uint i = 0; i < buf.size; i++)
     {
         buf.data[i]->udata64 = now;
     }
 }
 
-void Port::sendPackets(MBuffer &buf)
+int Port::sendPackets(MBuffer &buf)
 {
     // Send packets to eth
-    int txCount = rte_eth_tx_burst(_port, 0, buf.data, buf.size);
+    uint txCount = rte_eth_tx_burst(_port, _txIndex, buf.data, buf.size);
 
     // Free mbufs that were not sent
     if (txCount != buf.size)
     {
-        for (int i = txCount; i < buf.size; i++)
+        for (uint i = txCount; i < buf.size; i++)
             rte_pktmbuf_free(buf[i]);
-
-        _dropped += buf.size - txCount;
     }
+
+    return buf.size - txCount;
 }
 
-int Port::init(rte_mempool *mbufPool)
+int Port::init(rte_mempool *mbufPool, int txCount)
 {
     int ret;
     uint16_t nb_rxd = ETH_RING_SIZE;
@@ -51,7 +54,7 @@ int Port::init(rte_mempool *mbufPool)
     portConf.rxmode.max_rx_pkt_len = RTE_ETHER_MAX_LEN;
 
     // Set 1 rx and 1 tx queue for given port
-    ret = rte_eth_dev_configure(_port, 1, 1, &portConf);
+    ret = rte_eth_dev_configure(_port, 1, txCount, &portConf);
     if (ret != 0)
         return ret;
 
@@ -68,9 +71,12 @@ int Port::init(rte_mempool *mbufPool)
         return ret;
 
     // Setup tx queue
-    ret = rte_eth_tx_queue_setup(_port, 0, nb_txd, sockId, NULL);
-    if (ret < 0)
-        return ret;
+    for (int i = 0; i < txCount; i++)
+    {
+        ret = rte_eth_tx_queue_setup(_port, i, nb_txd, sockId, NULL);
+        if (ret < 0)
+            return ret;
+    }
 
     // Start eth device
     ret = rte_eth_dev_start(_port);

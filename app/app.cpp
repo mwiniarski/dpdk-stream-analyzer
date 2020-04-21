@@ -7,9 +7,11 @@
 
 using namespace std;
 
-void newPacketCallback(Packet &&packet)
+GlobalInfo* info;
+
+void newPacketCallback(Packet&& packet)
 {
-    static int c = 1;
+    calcPacketHash(packet, info->packetWork);
 }
 
 int main(int argc, char* argv[])
@@ -23,7 +25,7 @@ int main(int argc, char* argv[])
     int appIndex = stoi(argv[2]);
 
     // Retrieve global info
-    GlobalInfo* info = GlobalInfo::get();
+    info = GlobalInfo::get();
 
     // Retrieve rx ring used by app
     Ring rxRing(appIndex, chainIndex);
@@ -48,6 +50,7 @@ int main(int argc, char* argv[])
         Logl(">>> LAST-IN-CHAIN app mode");
 
         txPort = make_unique<Port>(info->txPort);
+        txPort->setTxIndex(chainIndex);
         sender = make_unique<Sender>(rxRing, *txPort, newPacketCallback);
     }
 

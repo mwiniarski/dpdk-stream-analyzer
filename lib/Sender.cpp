@@ -21,18 +21,18 @@ void Sender::sendPacketBurst()
 {
     _rxDevice.getPackets(_buffer);
 
-    for (int i = 0; i < _buffer.size; i++)
+    for (uint i = 0; i < _buffer.size; i++)
     {
         _callback(Packet(_buffer[i]));
     }
 
     collectStats();
-    _txDevice.sendPackets(_buffer);
+    _stats->addDropped(_txDevice.sendPackets(_buffer));
 }
 
 void Sender::collectStats()
 {
-    int i = 0;
+    uint i = 0;
     uint64_t now = rte_rdtsc();
 
     // Calculate number of packets after flush

@@ -26,6 +26,7 @@ public:
         int chainIndex;
         int appIndex;
         int dataLength;   // Count of elements stored in buffer
+        int dropped;
         int64_t timestamp;
     };
 

@@ -47,6 +47,11 @@ public:
         }
     }
 
+    void addDropped(int dropped)
+    {
+        _dropped += dropped;
+    }
+
 private:
     // Send accumulated data to server and clear
     inline void send()
@@ -58,12 +63,14 @@ private:
             .chainIndex = _chainIndex,
             .appIndex = _appIndex,
             .dataLength = _size,
+            .dropped = _dropped,
             .timestamp = _lastSent
         };
 
         _messenger.sendMessage(h, _buffer);
 
         _size = 0;
+        _dropped = 0;
     }
 
     using time_period = std::chrono::microseconds;
@@ -84,6 +91,7 @@ private:
     static const int BUFFER_MAX = Messenger::BUFFER_MAX;
     Messenger::Data _buffer[BUFFER_MAX];
     int _size = 0;
+    int _dropped = 0;
 
     // Info
     Type _type;

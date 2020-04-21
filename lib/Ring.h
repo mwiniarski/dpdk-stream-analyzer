@@ -40,7 +40,7 @@ public:
 
     // See Device.h
     void getPackets(MBuffer &buffer) override;
-    void sendPackets(MBuffer &buffer) override;
+    int sendPackets(MBuffer &buffer) override;
 
 private:
     // Setup ring with a name. See Ring(string,bool)

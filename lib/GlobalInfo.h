@@ -60,6 +60,7 @@ struct GlobalInfo
     int appsInChain[MAX_CHAINS];
 
     int loopsBeforeSwitch;
+    int packetWork;
 };
 
 

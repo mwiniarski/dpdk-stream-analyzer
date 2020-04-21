@@ -11,10 +11,12 @@
 using namespace std;
 using namespace std::chrono;
 
+GlobalInfo *info;
+
 rte_mempool* createMemPool()
 {
     const char* MBUF_POOL_NAME = "MBUF_POOL";
-    const int   MBUF_CACHE_SIZE = 500;
+    const int   MBUF_CACHE_SIZE = 250;
     const int   MBUF_COUNT = 65535;
 
     // Check ports
@@ -60,10 +62,9 @@ vector<Ring> initRings(GlobalInfo *gi)
     return firstRings;
 }
 
-void newPacketCallback(Packet &&p)
+void newPacketCallback(Packet&& packet)
 {
-    static uint64_t c = 0;
-    c++;
+    calcPacketHash(packet, info->packetWork);
 }
 
 int main(int argc, char *argv[])
@@ -78,15 +79,16 @@ int main(int argc, char *argv[])
         chainSizes.push_back(stoi(argv[i]));
 
     // Take app count as program argument
-    GlobalInfo *info = GlobalInfo::init(chainSizes);
+    info = GlobalInfo::init(chainSizes);
     info->loopsBeforeSwitch = 100;
+    info->packetWork = 0;
 
     // Create memory pool
     rte_mempool* mp = createMemPool();
 
     // Initialize eth ports
     Port rxPort(0, mp);
-    Port txPort(1, mp);
+    Port txPort(1, mp, chainSizes.size());
 
     // Initialize memory rings for all apps
     vector<Ring> firstRings = initRings(info);
