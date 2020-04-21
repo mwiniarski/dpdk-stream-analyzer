@@ -18,7 +18,7 @@ struct GlobalInfo
 {
     // String identifier of shared memory
     static const std::string NAME;
-    static const std::string STATS_RING;
+    static const std::string STATS_NAME;
     static const std::string MEMPOOL;
     static const int MAX_CHAINS = 8;
     static const int MAX_APPS = 8;

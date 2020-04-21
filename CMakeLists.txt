@@ -21,5 +21,5 @@ link_libraries(lib)
 
 add_executable(app    ${app_src})
 add_executable(server ${server_src})
-add_executable(logger ${logger_src})
+#add_executable(logger ${logger_src})
 

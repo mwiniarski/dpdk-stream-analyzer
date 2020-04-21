@@ -93,9 +93,6 @@ int main(int argc, char *argv[])
     // Initialize memory rings for all apps
     vector<Ring> firstRings = initRings(info);
 
-    // Initialize statistics ring
-    Ring(info->STATS_RING);
-
     // Create senders
     vector<Sender> ethToRingSenders;
     for (Ring &ring : firstRings)

@@ -4,75 +4,30 @@
 #include <cstdint>
 #include <memory>
 #include <chrono>
+#include <string>
 
-#include "Messenger.h"
+#include <InfluxDBFactory.h>
+
 #include "GlobalInfo.h"
 #include "Log.h"
+
 
 class Statistics
 {
 public:
-    enum Type { ETH = 0, APP = 1 };
+    enum Type { ETH = 0, APP = 1};
 
-    Statistics(int type, int chainInd, int appInd)
-        :_type((Type) type),
-         _chainIndex(chainInd),
-         _appIndex(appInd)
-    {}
+    Statistics(int type, int chainInd, int appInd);
 
-    static const int PACKETS_MAX = Messenger::PACKETS_PER_DATA_POINT;
+    void addCycles(uint64_t cycles);
+    void addBytes(uint64_t bytes);
+    void addLinkCap(uint64_t linkCap);
+    void addPackets(uint64_t packets);
+    void addDropped(int dropped);
 
-    // Temporary counters
-    int packets = 0;
-    Messenger::Data data = {};
-
-    // Move from temporary to accumulative
-    inline void flush()
-    {
-        int64_t now = getTime();
-
-        _lastFlush = now;
-
-        // Add to buffer
-        _buffer[_size++] = data;
-        data = {};
-        packets = 0;
-
-        // 1 second passed or buffer full
-        if (now - _lastSent > one_sec() ||
-            _size == BUFFER_MAX)
-        {
-            _lastSent = now;
-            send();
-        }
-    }
-
-    void addDropped(int dropped)
-    {
-        _dropped += dropped;
-    }
+    void try_flush();    
 
 private:
-    // Send accumulated data to server and clear
-    inline void send()
-    {
-        // Send
-        Messenger::Header h =
-        {
-            .reporter = (Messenger::Header::Type) _type,
-            .chainIndex = _chainIndex,
-            .appIndex = _appIndex,
-            .dataLength = _size,
-            .dropped = _dropped,
-            .timestamp = _lastSent
-        };
-
-        _messenger.sendMessage(h, _buffer);
-
-        _size = 0;
-        _dropped = 0;
-    }
-
     using time_period = std::chrono::microseconds;
 
     constexpr int64_t one_sec()
@@ -83,25 +38,28 @@ private:
     const int64_t getTime()
     {
         return std::chrono::duration_cast<time_period>(
-                   std::chrono::system_clock::now().time_since_epoch()
-               ).count();
+                std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
-    // Accumulative counter
-    static const int BUFFER_MAX = Messenger::BUFFER_MAX;
-    Messenger::Data _buffer[BUFFER_MAX];
-    int _size = 0;
-    int _dropped = 0;
+    // Accumulative counters
+    struct Stats 
+    {
+        uint64_t dropped;
+        uint64_t packets;
+        uint64_t cycles;
+        uint64_t bytes;
+        uint64_t linkCap;
+    } _stats = {};
 
     // Info
-    Type _type;
-    int _chainIndex;
-    int _appIndex;
+    const std::string _type;
+    const std::string _chainIndex;
+    const std::string _appIndex;
 
     // Initial values for timer and message ring
-    int64_t _lastSent {getTime()};
-    int64_t _lastFlush {getTime()};
-    Messenger _messenger {GlobalInfo::MEMPOOL, GlobalInfo::STATS_RING};
+    std::chrono::system_clock::time_point _lastFlush;
+
+    std::unique_ptr<influxdb::InfluxDB> _influxdb;
 };
 
 #endif
