@@ -1,6 +1,8 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <chrono>
 
 const int CPU_COUNT = 5;
 
@@ -90,4 +92,61 @@ std::vector<DiffStats> calculateUsage(std::vector<CpuStats>& olds, std::vector<C
     }
 
     return diffs;
+}
+
+void runCPUMeasurements(std::string& url)
+{
+    auto influxdb = influxdb::InfluxDBFactory::Get(url);
+
+    auto oldStats = readStatsCPU();
+    influxdb->batchOf(oldStats.size());
+
+#ifdef LOOP_EXPERIMENT
+    GlobalInfo* info = GlobalInfo::get();
+    auto influxdb2 = influxdb::InfluxDBFactory::Get(url);
+    auto currTime = system_clock::now();
+    influxdb2->write(influxdb::Point{"LoopsAndWork"}
+        .addField("loops", info->loopsBeforeSwitch)
+        .addField("work", info->packetWork)
+        .setTimestamp(currTime));
+
+    uint stage = 1;
+#endif
+    for (;;)
+    {
+        sleep(1);
+
+        auto newStats = readStatsCPU();
+        auto diffs = calculateUsage(oldStats, newStats);
+        auto now = std::chrono::system_clock::now();
+        oldStats = newStats;
+
+        for (uint i = 0; i < diffs.size(); i++)
+        {
+            influxdb->write(influxdb::Point{"CPUstats"}
+                .addTag("cpu", std::to_string(i))
+                .addField("user", diffs[i].user)
+                .addField("system", diffs[i].system)
+                .addField("idle", diffs[i].idle)
+                .setTimestamp(now));
+        }
+
+#ifdef LOOP_EXPERIMENT
+        if (now - currTime > 1.5s)
+        {
+            if (info->loopsBeforeSwitch == 5)
+                break;
+
+            info->loopsBeforeSwitch -= 5;
+            stage++;
+            currTime = now;
+            Logl("Loops: " << info->loopsBeforeSwitch);
+
+            influxdb2->write(influxdb::Point{"LoopsAndWork"}
+                .addField("loops", info->loopsBeforeSwitch)
+                .addField("work", info->packetWork)
+                .setTimestamp(now));
+        }
+#endif
+    }
 }

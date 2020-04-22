@@ -11,27 +11,19 @@
 class Messenger
 {
 public:
-    struct Data
-    {
-        uint64_t cycles;
-        uint64_t bytes;
-        uint32_t linkCap;
-    };
+    enum Type { ETH = 0, APP = 1};
 
     struct Header
     {
-        enum Type { ETH = 0, APP = 1};
-
-        Type reporter;
+        int type;
         int chainIndex;
         int appIndex;
-        int dataLength;   // Count of elements stored in buffer
-        int dropped;
+        long long throughput;
+        long long latency;
+        double link;
+        double dropped;
         int64_t timestamp;
     };
-
-    static const int BUFFER_MAX = (RTE_MBUF_DEFAULT_BUF_SIZE - sizeof(Header)) / sizeof(Data);
-    static const int PACKETS_PER_DATA_POINT = 1024;
 
 public:
     /**
@@ -42,7 +34,8 @@ public:
      * @param ringName      Name of the ring
      */
     Messenger(const std::string& mempoolName,
-              const std::string& ringName);
+              const std::string& ringName,
+              bool createNew = false);
 
     /**
      * Send a message via ring communication.
@@ -50,7 +43,7 @@ public:
      * @param header    Header with at least correctly filled dataLenght
      * @param data      Buffer of max size BUFFER_MAX * sizeof(buff_type)
      */
-    void sendMessage(const Header& header, Data* data);
+    void sendMessage(const Header& header);
 
     /**
      * Receive a message via ring communication and copy it
@@ -59,9 +52,12 @@ public:
      * @param header    Empty header. Received header will be copied into it
      * @param data      Allocated data of size BUFFER_MAX * sizeof(buff_type)
      */
-    void recvMessage(Header& header, Data* data);
+    void recvMessage(Header& header);
 
 private:
+    void createRing(const std::string& ringName);
+    void createMempool(const std::string& mempoolName);
+
     // Find existing mempool by name
     void lookupMempool(const std::string& mempoolName);
 

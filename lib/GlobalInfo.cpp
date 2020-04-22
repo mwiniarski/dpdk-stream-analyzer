@@ -2,6 +2,7 @@
 
 const std::string GlobalInfo::NAME = "GLOBAL_INFO";
 const std::string GlobalInfo::STATS_RING = "STATS_RING";
+const std::string GlobalInfo::STATS_MEMPOOL = "STATS_MEMPOOL";
 const std::string GlobalInfo::MEMPOOL = "MBUF_POOL";
 
 GlobalInfo* GlobalInfo::init(std::vector<int> chainSizes)

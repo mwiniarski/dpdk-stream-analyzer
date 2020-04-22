@@ -1,14 +1,45 @@
 #include <unistd.h>
 
 #include "Messenger.h"
-
+#include "GlobalInfo.h"
 #include "Log.h"
 
 Messenger::Messenger(const std::string& mempoolName,
-                     const std::string& ringName)
+                     const std::string& ringName,
+                     bool createNew)
 {
-    lookupRing(ringName);
-    lookupMempool(mempoolName);
+    if (createNew)
+    {
+        createRing(ringName);
+        createMempool(mempoolName);
+    }
+    else
+    {
+        lookupRing(ringName);
+        lookupMempool(mempoolName);
+    }
+}
+
+void Messenger::createRing(const std::string& ringName)
+{
+    _ring = rte_ring_create(ringName.c_str(), 256, rte_socket_id(), 0);
+
+    if (!_ring)
+        rte_exit(EXIT_FAILURE, "ERROR: Can't create ring [%s]\n", ringName.c_str());
+
+    Logl(">>> " << ringName << " created!");
+}
+
+void Messenger::createMempool(const std::string& mempoolName)
+{
+    _mempool = rte_mempool_create(mempoolName.c_str(),
+                                  256, sizeof(Messenger::Header), 
+                                  0, 0, NULL, NULL, NULL, NULL,
+                                  rte_socket_id(), 0);
+
+    if(!_mempool)
+        rte_exit(EXIT_FAILURE, "ERROR: Can't create mempool [%s]\n",
+                                            mempoolName.c_str());
 }
 
 void Messenger::lookupMempool(const std::string& mempoolName)
@@ -29,7 +60,7 @@ void Messenger::lookupRing(const std::string& ringName)
                                             ringName.c_str());
 }
 
-void Messenger::sendMessage(const Header& mh, Data *data)
+void Messenger::sendMessage(const Header& mh)
 {
     uint8_t *memory = NULL;
 
@@ -38,10 +69,9 @@ void Messenger::sendMessage(const Header& mh, Data *data)
 
     // COPY of packets - can be changed later
     memcpy(memory, &mh, sizeof(mh));
-    memcpy(memory + sizeof(mh), data, mh.dataLength * sizeof(Data));
 
     // Send to ring
-    if (rte_ring_mp_enqueue(_ring, memory) < 0) {
+    if (rte_ring_enqueue(_ring, memory) < 0) {
 		Logl("Error: Failed to send message");
 
         // Put back
@@ -49,7 +79,7 @@ void Messenger::sendMessage(const Header& mh, Data *data)
 	}
 }
 
-void Messenger::recvMessage(Header& mh, Data* data)
+void Messenger::recvMessage(Header& mh)
 {
     uint8_t *memory = NULL;
 
@@ -61,7 +91,6 @@ void Messenger::recvMessage(Header& mh, Data* data)
 
     // COPY of packets - can be changed later
     memcpy(&mh, memory, sizeof(mh));
-    memcpy(data, memory + sizeof(mh), mh.dataLength * sizeof(Data));
 
     // Put back memory
     rte_mempool_put(_mempool, memory);

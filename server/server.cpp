@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
     // Initialize memory rings for all apps
     vector<Ring> firstRings = initRings(info);
 
-    // Initialize statistics ring
-    Ring(info->STATS_RING);
+    // Initialize messenger
+    Messenger(info->STATS_MEMPOOL, info->STATS_RING, true);
 
     // Create senders
     vector<Sender> ethToRingSenders;
