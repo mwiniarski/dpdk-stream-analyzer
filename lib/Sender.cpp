@@ -17,7 +17,7 @@ Sender::Sender(Device& rx,
     _stats = make_unique<Statistics>(txDevType, chainInd, appInd);
 }
 
-void Sender::sendPacketBurst()
+int Sender::sendPacketBurst()
 {
     _rxDevice.getPackets(_buffer);
 
@@ -29,6 +29,8 @@ void Sender::sendPacketBurst()
     collectStats();
     _stats->addDropped(_txDevice.sendPackets(_buffer));
     _stats->try_flush();
+
+    return _buffer.size;
 }
 
 void Sender::collectStats()

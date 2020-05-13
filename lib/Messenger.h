@@ -18,8 +18,8 @@ public:
         int type;
         int chainIndex;
         int appIndex;
-        long long throughput;
-        long long latency;
+        double throughput;
+        double latency;
         double link;
         double dropped;
         int64_t timestamp;

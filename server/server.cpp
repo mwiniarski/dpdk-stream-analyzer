@@ -64,7 +64,7 @@ vector<Ring> initRings(GlobalInfo *gi)
 
 void newPacketCallback(Packet&& packet)
 {
-    calcPacketHash(packet, info->packetWork);
+    //calcPacketHash(packet, info->packetWork);
 }
 
 int main(int argc, char *argv[])

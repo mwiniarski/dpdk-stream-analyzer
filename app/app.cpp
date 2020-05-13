@@ -54,6 +54,9 @@ int main(int argc, char* argv[])
         sender = make_unique<Sender>(rxRing, *txPort, newPacketCallback);
     }
 
+    // Schedule
+    //schedule(SCHED_FIFO);
+
     // Main loop
     for (;;)
     {

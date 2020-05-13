@@ -28,7 +28,7 @@ public:
     /**
      * Perform one transfer of all packets accumulated on rx.
      */
-    void sendPacketBurst();
+    int sendPacketBurst();
 
 private:
 

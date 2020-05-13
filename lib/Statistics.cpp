@@ -16,12 +16,12 @@ void Statistics::try_flush()
     auto now = system_clock::now();
 
     // 1 second passed
-    if (now - _lastFlush > 1s && _stats.packets != 0)
+    if (now - _lastFlush > STAT_DELAY && _stats.packets != 0)
     {
         double secs = (double) duration_cast<microseconds>(now - _lastFlush).count() / 1000000.0L;
         _lastFlush = now;
 
-        uint64_t throughput = (double) _stats.bytes / secs;
+        double throughput = (double) _stats.bytes / secs;
         double link = 100.0L * _stats.packets / _stats.linkCap;
         double dropped = 100.0L * _stats.dropped / _stats.packets;
         double latency = 1000000.0L * _stats.cycles / rte_get_timer_hz() / _stats.packets;

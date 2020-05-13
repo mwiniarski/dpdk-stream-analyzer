@@ -25,6 +25,8 @@ public:
     void try_flush();    
 
 private:
+    static constexpr auto STAT_DELAY = std::chrono::seconds(1);
+
     // Accumulative counters
     struct Stats 
     {

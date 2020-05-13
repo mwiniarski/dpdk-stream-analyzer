@@ -36,6 +36,8 @@ int main(int argc, char* argv[])
     GlobalInfo* info = GlobalInfo::get();
     info->packetWork = stoi(argv[2]);
 
+    Logl(">>> Packet workload: " << info->packetWork);
+
     // Get the messenger to receive packets
     Messenger messenger(info->STATS_MEMPOOL, info->STATS_RING);
 
@@ -51,10 +53,13 @@ int main(int argc, char* argv[])
         string title = (mh.type == Messenger::APP ? "APP" : "ETH");
         time_point<system_clock> tp(nanoseconds(mh.timestamp));
 
+        /*
         Logl(title << " [" << mh.chainIndex << ", " << mh.appIndex << "] - " << setprecision(3)
-                   << ", lat = " << mh.latency << "us "
+                   << "lat = " << mh.latency << "us "
                    << "link = " << mh.link << "% "
                    << "speed = " << mh.throughput / 1024 << "kB/s");
+        */
+       Log("|" << flush);
 
         if (!seriesName.empty())
         {

@@ -43,7 +43,6 @@ void initEAL(int &argc, char **argv[])
  */
 void schedule(int policy)
 {
-    return;
     sched_param sp = { .sched_priority = 1 };
 
     pthread_setschedparam(pthread_self(), policy, &sp);
@@ -53,6 +52,8 @@ void schedule(int policy)
         ((policy == SCHED_FIFO)  ? "SCHED_FIFO" :
         (policy == SCHED_RR)    ? "SCHED_RR" :
         "SCHED_OTHER") << " priority = " << sp.sched_priority);
+
+    sleep(3);
 }
 
 /**
