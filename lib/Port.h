@@ -11,7 +11,7 @@
  */
 class Port : public Device
 {
-    static const int ETH_RING_SIZE = 512;
+    static const int ETH_RING_SIZE = 1024;
 
 public:
     /**

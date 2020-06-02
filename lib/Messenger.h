@@ -20,6 +20,11 @@ public:
         int appIndex;
         double throughput;
         double latency;
+        double theoreticalLatency;
+        double workTime;
+        double workToSwitch;
+        double switchTime;
+        double procSpeed;
         double link;
         double dropped;
         int64_t timestamp;

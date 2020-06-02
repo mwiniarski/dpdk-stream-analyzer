@@ -16,11 +16,14 @@ class Statistics
 public:
     Statistics(int type, int chainInd, int appInd);
 
-    void addCycles(uint64_t cycles);
+    void addCycles(int64_t cycles);
     void addBytes(uint64_t bytes);
     void addLinkCap(uint64_t linkCap);
     void addPackets(uint64_t packets);
+    void addWorkTime(int64_t workTime);
     void addDropped(int dropped);
+    void addSwitch(int count);
+    void addSwitchTime(int64_t switchTime);
 
     void try_flush();    
 
@@ -35,6 +38,10 @@ private:
         uint64_t cycles;
         uint64_t bytes;
         uint64_t linkCap;
+        uint64_t workTime;
+        uint64_t switches;
+        uint64_t switchTime;
+        uint64_t loopsBeforeSwitch;
     } _stats = {};
 
     // Info
@@ -46,6 +53,8 @@ private:
     std::chrono::system_clock::time_point _lastFlush;
 
     Messenger _messenger {GlobalInfo::STATS_MEMPOOL, GlobalInfo::STATS_RING};
+
+    GlobalInfo *_info;
 };
 
 #endif

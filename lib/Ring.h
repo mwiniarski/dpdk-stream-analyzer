@@ -42,6 +42,9 @@ public:
     void getPackets(MBuffer &buffer) override;
     int sendPackets(MBuffer &buffer) override;
 
+    // Get number of elements in the ring
+    int size();
+
 private:
     // Setup ring with a name. See Ring(string,bool)
     void init(const std::string& name, bool createNew);

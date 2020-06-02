@@ -2,6 +2,8 @@
 #include "Log.h"
 
 #include <rte_cycles.h>
+#include <chrono>
+using namespace std::chrono;
 
 Port::Port(int p, rte_mempool* mp, int tx)
     :Device(-1, p),
@@ -20,11 +22,12 @@ void Port::getPackets(MBuffer &buf)
     buf.size = rte_eth_rx_burst(_port, 0, buf.data, buf.CAPACITY);
 
     // Put a timestamp into every packet
-    uint64_t now = rte_rdtsc();
-    for (uint i = 0; i < buf.size; i++)
-    {
-        buf.data[i]->udata64 = now;
-    }
+    
+    // int64_t now = system_clock::now().time_since_epoch().count();
+    // for (uint i = 0; i < buf.size; i++)
+    // {
+    //     buf.data[i]->udata64 = now;
+    // }
 }
 
 int Port::sendPackets(MBuffer &buf)

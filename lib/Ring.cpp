@@ -2,10 +2,12 @@
 #include "Ring.h"
 #include "Log.h"
 
+#include <chrono>
 using namespace std;
+using namespace std::chrono;
 
 const string Ring::PREFIX = "RING_";
-const int Ring::SIZE = 1024;
+const int Ring::SIZE = 512;
 
 Ring::Ring(int appInd, int chainInd, bool createNew)
     :Device(chainInd, appInd)
@@ -46,6 +48,11 @@ string Ring::getName(int chainIndex, int appIndex)
     return (PREFIX + to_string(chainIndex) + "_" + to_string(appIndex));
 }
 
+int Ring::size()
+{
+    return rte_ring_count(_ring);
+}
+
 void Ring::getPackets(MBuffer &buf)
 {
     // Get packets from ring
@@ -57,9 +64,6 @@ int Ring::sendPackets(MBuffer &buf)
     // Send to ring
     uint free_space;
     uint txCount = rte_ring_sp_enqueue_bulk(_ring, (void**) buf.data, buf.size, &free_space);
-
-    if (free_space < buf.CAPACITY)
-        Logl("Free space low! [" << free_space << "]");
 
     // Free mbufs that were not sent
     if (txCount != buf.size)

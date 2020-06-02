@@ -23,17 +23,22 @@ public:
      */
     Sender(Device& rx,
            Device& tx,
-           std::function<void (Packet &&p)> cb);
+           std::function<int (Packet &&p)> cb,
+           bool collectStats);
 
     /**
      * Perform one transfer of all packets accumulated on rx.
+     * 
+     * @return Number of packets received
      */
     int sendPacketBurst();
 
+    void addSwitch(int count);
+    void addTimes(int64_t switchTime, int64_t workTime);
 private:
 
     // Save timers of packets and send them if needed
-    void collectStats();
+    void collectStats(int64_t now);
 
     // Array of mbufs used to transfer packets
     MBuffer _buffer;
@@ -43,10 +48,14 @@ private:
     Device& _txDevice;
 
     // Function called in the middle of transfer
-    std::function<void (Packet &&p)> _callback;
+    std::function<int (Packet &&p)> _callback;
 
     // Stats
     std::unique_ptr<Statistics> _stats;
+    bool _collectStats;
+
+    std::chrono::system_clock::time_point _start;
+    int64_t a;
 };
 
 #endif

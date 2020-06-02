@@ -8,7 +8,7 @@
  */
 struct MBuffer
 {
-    static const int CAPACITY = 32;
+    static const int CAPACITY = 8;
 
     // Current number of used pointers
     uint size;
