@@ -16,8 +16,8 @@ GlobalInfo *info;
 rte_mempool* createMemPool()
 {
     const char* MBUF_POOL_NAME = "MBUF_POOL";
-    const int   MBUF_CACHE_SIZE = 250;
-    const int   MBUF_COUNT = 65535;
+    const int   MBUF_CACHE_SIZE = 0;
+    const int   MBUF_COUNT = 8191;
 
     // Check ports
     int portCount = rte_eth_dev_count_avail();
@@ -62,9 +62,10 @@ vector<Ring> initRings(GlobalInfo *gi)
     return firstRings;
 }
 
-void newPacketCallback(Packet&& packet)
+int newPacketCallback(Packet&& packet)
 {
     //calcPacketHash(packet, info->packetWork);
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -101,20 +102,27 @@ int main(int argc, char *argv[])
     for (Ring &ring : firstRings)
         ethToRingSenders.emplace_back(rxPort,
                                       ring,
-                                      newPacketCallback);
+                                      newPacketCallback,
+                                      false);
 
-    Sender ethToEth(txPort, rxPort, newPacketCallback);
+    Sender ethToEth(txPort, rxPort, newPacketCallback, false);
+
+    vector<uint64_t> counters(ethToRingSenders.size());
 
     for (;;)
     {
-        // Super simple time-based round-robin
-        for (Sender &ethToRing : ethToRingSenders)
+        // Super simple fair choice
+        int smallest = 0;
+        for (uint i = 1; i < ethToRingSenders.size(); i++)
         {
-            // ETH --> RING[i]
-            ethToRing.sendPacketBurst();
-
-            // ETH <-- ETH
-            ethToEth.sendPacketBurst();
+            if (counters[i] < counters[smallest])
+                smallest = i;
         }
+
+        // ETH --> RING[i]
+        counters[smallest] += ethToRingSenders[smallest].sendPacketBurst();
+
+        // ETH <-- ETH
+        ethToEth.sendPacketBurst();
     }
 }
