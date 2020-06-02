@@ -53,13 +53,16 @@ int main(int argc, char* argv[])
         string title = (mh.type == Messenger::APP ? "APP" : "ETH");
         time_point<system_clock> tp(nanoseconds(mh.timestamp));
 
-        /*
-        Logl(title << " [" << mh.chainIndex << ", " << mh.appIndex << "] - " << setprecision(3)
-                   << "lat = " << mh.latency << "us "
-                   << "link = " << mh.link << "% "
-                   << "speed = " << mh.throughput / 1024 << "kB/s");
-        */
-       Log("|" << flush);
+        // /*
+        // Logl(title << " [" << mh.chainIndex << ", " << mh.appIndex << "] - " << setprecision(3)
+        //            << "lat = " << mh.latency << "us "
+        //            << "link = " << mh.link << "% "
+        //            << "speed = " << mh.throughput / 1024 << "kB/s");
+        // */
+
+        // SELECT mean("throughput") as V1, mean("procSpeed") as V2, mean("workToSwitch") as R, mean("worktime") as T, mean("switchTime") as Ts, mean("latency") as Tw, mean("theoreticalLatency") as TTw FROM "stats2" WHERE ("type" = 'ETH' AND "index" = '1') and time > now() - 60s
+        // SELECT mean("user") as cpu2 FROM CPUstats WHERE "cpu"='2' and time > now() - 60s
+        Log("|" << flush);
 
         if (!seriesName.empty())
         {
@@ -67,8 +70,13 @@ int main(int argc, char* argv[])
                 .addTag("type", title)
                 .addTag("chain", to_string(mh.chainIndex))
                 .addTag("index", to_string(mh.appIndex))
-                .addField("throughput", mh.throughput / 1024)
+                .addField("throughput", mh.throughput)
                 .addField("latency", mh.latency)
+                .addField("theoreticalLatency", mh.theoreticalLatency)
+                .addField("worktime", mh.workTime)
+                .addField("workToSwitch", mh.workToSwitch)
+                .addField("switchTime", mh.switchTime)
+                .addField("procSpeed", mh.procSpeed)
                 .addField("link", mh.link)
                 .addField("dropped", mh.dropped)
                 .setTimestamp(tp));
