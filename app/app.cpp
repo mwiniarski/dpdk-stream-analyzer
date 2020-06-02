@@ -58,9 +58,6 @@ int main(int argc, char* argv[])
     schedule(SCHED_FIFO);
 
     // Main loop
-    //uint j = 100000;
-    vector<int> vec(100);
-
     int counter = 0;
     auto now = chrono::system_clock::now();
     auto now2 = chrono::system_clock::now();
@@ -69,23 +66,8 @@ int main(int argc, char* argv[])
     {
         counter++;
 
-        // RING --> ETH3
+        // RING --> ETH
         const int c = sender->sendPacketBurst();
-        // if (j < vec.size())
-        // {
-        //     vec[j] = c;
-        //     if (j == 0)
-        //     {
-        //         cout << "A ";
-        //         for (int a : vec)
-        //         {
-        //             cout << a << " ";
-        //         }
-        //         cout << endl;
-
-        //         j = 100000;
-        //     }
-        // }
 
         if(c < MBuffer::CAPACITY || counter == info->loopsBeforeSwitch)
         {
@@ -101,8 +83,5 @@ int main(int argc, char* argv[])
             sender->addTimes(switchTime.count(), workTime.count());
             counter = 0;
         }
- 
-        //j--;
-        //mic_sleep(info->loopsBeforeSwitch);
     }
 }
