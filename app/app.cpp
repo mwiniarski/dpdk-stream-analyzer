@@ -9,9 +9,9 @@ using namespace std;
 
 GlobalInfo* info;
 
-void newPacketCallback(Packet&& packet)
+int newPacketCallback(Packet&& packet)
 {
-    calcPacketHash(packet, info->packetWork);
+    return calcPacketHash(packet, info->packetWork);
 }
 
 int main(int argc, char* argv[])
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
         Logl(">>> MIDDLE app mode");
 
         txRing = make_unique<Ring>(appIndex + 1, chainIndex);
-        sender = make_unique<Sender>(rxRing, *txRing, newPacketCallback);
+        sender = make_unique<Sender>(rxRing, *txRing, newPacketCallback, true);
     }
     else
     // It is the last app - send to eth
@@ -51,19 +51,58 @@ int main(int argc, char* argv[])
 
         txPort = make_unique<Port>(info->txPort);
         txPort->setTxIndex(chainIndex);
-        sender = make_unique<Sender>(rxRing, *txPort, newPacketCallback);
+        sender = make_unique<Sender>(rxRing, *txPort, newPacketCallback, true);
     }
 
     // Schedule
-    //schedule(SCHED_FIFO);
+    schedule(SCHED_FIFO);
 
     // Main loop
+    //uint j = 100000;
+    vector<int> vec(100);
+
+    int counter = 0;
+    auto now = chrono::system_clock::now();
+    auto now2 = chrono::system_clock::now();
+
     for (;;)
     {
-        // RING --> ETH
-        sender->sendPacketBurst();
+        counter++;
 
-        mic_sleep(info->loopsBeforeSwitch);
+        // RING --> ETH3
+        const int c = sender->sendPacketBurst();
+        // if (j < vec.size())
+        // {
+        //     vec[j] = c;
+        //     if (j == 0)
+        //     {
+        //         cout << "A ";
+        //         for (int a : vec)
+        //         {
+        //             cout << a << " ";
+        //         }
+        //         cout << endl;
+
+        //         j = 100000;
+        //     }
+        // }
+
+        if(c < MBuffer::CAPACITY || counter == info->loopsBeforeSwitch)
+        {
+            sender->addSwitch(counter);
+            auto now2Old = now2;
+            now = chrono::system_clock::now();
+            sched_yield();
+            now2 = chrono::system_clock::now();
+
+            auto workTime = now - now2Old;
+            auto switchTime = (now2 - now - workTime * (info->chainCount - 1)) / info->chainCount;
+
+            sender->addTimes(switchTime.count(), workTime.count());
+            counter = 0;
+        }
+ 
+        //j--;
+        //mic_sleep(info->loopsBeforeSwitch);
     }
-
 }
